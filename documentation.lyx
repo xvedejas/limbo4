@@ -1,0 +1,313 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1in
+\topmargin 1in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Limbo Documentation and Discussion
+\end_layout
+
+\begin_layout Part
+What we want out of Limbo, and how to get there
+\end_layout
+
+\begin_layout Standard
+There are several goals in designing limbo.
+\end_layout
+
+\begin_layout Itemize
+We want as much 
+\series bold
+volume
+\series default
+ as possible.
+ This means making it easy and profitable to buy and sell.
+\end_layout
+
+\begin_layout Itemize
+We want to 
+\series bold
+minimize risk
+\series default
+.
+ This might mean making it harder to steal money/products.
+ This could also mean accounting for an anticipated rate of thefts / bookkeeping
+ errors.
+\end_layout
+
+\begin_layout Itemize
+We want to 
+\series bold
+minimize the debt
+\series default
+ people are in.
+ Temporary debt is fine (everyone would like to have this option), but long-term
+ debt starts to take advantage of the house.
+\end_layout
+
+\begin_layout Itemize
+We want to maximize the availability for people to withdraw cash (
+\series bold
+liquidity
+\series default
+) when they have a positive balance.
+\end_layout
+
+\begin_layout Itemize
+We want people to feel that limbo is 
+\series bold
+non-restrictive
+\series default
+.
+ If we restrict their transactions for any reason, we increase the chance
+ of ragequits.
+\end_layout
+
+\begin_layout Section*
+Obtaining Liquidity with a Sales Tax
+\end_layout
+
+\begin_layout Standard
+One problem is liquidity; you want there to be extra cash laying around
+ so people have more freedom to withdraw.
+ You accomplish this by making the cost of items slightly more than the
+ profit the seller gets.
+ The difference remains as cash in the system.
+ We will call this the "sales tax".
+\end_layout
+
+\begin_layout Standard
+Setting the sales tax is not a difficult problem.
+ The sales tax needs to be somehow proportional to the illiquidity.
+ We can define the inverse of liquidity as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+I=\frac{\mbox{sum of positive balances}}{\mbox{amount of cash (money available to withdraw)}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We want the sales tax 
+\begin_inset Formula $S(I)$
+\end_inset
+
+ to obey boundary conditions like
+\begin_inset Formula 
+\[
+S\left(I\leq1\right)=0,\quad S\left(I\rightarrow\infty\right)\rightarrow S_{max}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $S_{max}$
+\end_inset
+
+ is an arbitrary chosen maximum taxation rate.
+ This value should be lower than the typical limbo profit rate.
+ A reasonable choice would be 
+\begin_inset Formula $S_{max}=20\%$
+\end_inset
+
+.
+ A function which satisfies these conditions is the sigmoidal function:
+\begin_inset Formula 
+\[
+S\left(I\right)=S_{max}\left[\frac{2}{1+\exp\left(-kI\right)}-1\right]
+\]
+
+\end_inset
+
+Where 
+\begin_inset Formula $k$
+\end_inset
+
+ is some scaling parameter we can choose to set how gradually the sales
+ tax grows.
+\end_layout
+
+\begin_layout Section*
+Fighting Debt with a Debt Tax (Interest Rate)
+\end_layout
+
+\begin_layout Standard
+Debt is a problem because debtors take advantage of the house.
+ To disincentivize holding debt for long periods of time, we apply interest
+ rates on debt.
+ This would likely manifest as increasing the debt by ~5% every month.
+ This would result in debt doubling every ~14 months.
+\end_layout
+
+\begin_layout Standard
+This tax would not affect liquidity directly.
+ If it correctly incentivizes paying off debt, it will help liquidity.
+\end_layout
+
+\begin_layout Section*
+Fighting Theft through Subsidies
+\end_layout
+
+\begin_layout Standard
+Because of the sales tax and debt tax, limbo will slowly gain extra money
+ (though not necessarily extra cash! the distinction is important).
+ For each transaction, we could pay up to some percentage back to sellers.
+ This would basically be the opposite of the sales tax! This would hurt
+ liquidity.
+ It might be that the only correct way to subsidize sellers is to divert
+ house funds into limbo.
+ I want to avoid this if possible, so for now sellers will just have to
+ deal with some risk.
+\end_layout
+
+\begin_layout Part
+Coding Perspective
+\end_layout
+
+\begin_layout Standard
+In addition to marketplace goals, there also are goals in coding limbo.
+\end_layout
+
+\begin_layout Itemize
+We want to make it as easy as possible for people to contribute code or
+ fix code themselves.
+\end_layout
+
+\begin_layout Itemize
+We want to make documentation and code easy to browse (point your browser
+ to github, rather than having to ssh into titanic)
+\end_layout
+
+\begin_layout Section*
+Encouraging Hacking
+\end_layout
+
+\begin_layout Standard
+Using fewer technologies makes the barrier to entry much lower.
+ Here is the set of technologies needed to understand in order to contribute
+ code
+\end_layout
+
+\begin_layout Itemize
+Python3 (cgi scripts and client-side scripts, thanks to brython)
+\end_layout
+
+\begin_layout Itemize
+HTML
+\end_layout
+
+\begin_layout Itemize
+sqlite
+\end_layout
+
+\begin_layout Section*
+Setting up your Environment
+\end_layout
+
+\begin_layout Standard
+It is recommended you setup your environment in one of three ways:
+\end_layout
+
+\begin_layout Itemize
+Apache server on your personal computer
+\end_layout
+
+\begin_layout Itemize
+Apache server + ssh server in VM
+\end_layout
+
+\begin_layout Itemize
+Apache server + ssh server on your personal server
+\end_layout
+
+\begin_layout Standard
+Then you can use sshfs to locally mount your limbo directory, which you
+ should place in /srv/http/.
+ You may then edit the files using your local IDE and your server will automatic
+ally see the changes.
+\end_layout
+
+\begin_layout Section*
+Files
+\end_layout
+
+\begin_layout Standard
+The limbo directory contains httpd.conf, which you might want to copy into
+ /etc/httpd/conf/.
+ It enables cgi scripts for /srv/http/limbo4/cgi-bin/ for Apache.
+ Make sure to backup your original configuration.
+\end_layout
+
+\end_body
+\end_document

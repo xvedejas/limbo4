@@ -1,0 +1,80 @@
+<html>
+<head>
+<script src="brython.js"></script>
+</head>
+<body onload="brython(1)">
+<div style="background-color:#000000;width:800px;margin:0 auto;color:#FFFFFF;">
+<script type="text/python">
+from browser import doc, alert
+from limbo import async_request, notify, Keycode, redirect
+
+a, b = eval('(1, 2)')
+print(a, b)
+
+# new ideas:
+# - Easy Auditing of current inventory vs recorded discrepencies
+# - Expiration date on stock
+# - Only allowing someone to take on debt if limbo has a net positive balance
+#   (we can debate this all you want but I think a trial period would be nice)
+
+usernames = []
+
+def login_event(ev):
+    """This is called when the login button is pressed."""
+    login(doc["username"].value)
+
+def keydown_event(ev):
+    """This is called when a key is pressed while the username box is in focus."""
+    if ev.keyCode == Keycode.enter:
+        login_event(ev)
+
+def get_usernames_done(usernames):
+    doc["usernames"].html = ''.join('<option value="%s">' % user for user in usernames)
+
+def login(username):
+    """This is called when the login button is pressed."""
+    async_request(login_done, action="login", username=username)
+
+def login_done(t):
+    success, username = t
+    if success:
+        redirect("store.html", username=username)
+    else:
+        # Todo: have a user creation page
+        #redirect("create_account.html", username=username)
+        notify("Error: user '%s' not found." % username)
+
+# Populate the variable "usernames". Todo: have a timeout to reload this.
+async_request(get_usernames_done, action="get_usernames")
+
+doc['username'].bind('keydown', keydown_event)
+doc['login_button'].bind('click', login_event)
+
+</script>
+
+<center>
+<a href="index.html"><img src="../images/limbo4.png" /></a>
+<br />
+<br />
+<br />
+<br />
+<br />
+<!-- The text input uses the datalist tag to suggest autocomplete terms.
+     This is separate from browser autocomplete, which we want to specify as off. -->
+<input type="text" id="username" name="username" list="usernames" autofocus autocomplete="off"></input>
+<!-- The datalist tag is populated by get_usernames_done(). For explanation on
+     the datalist tag, see http://www.w3schools.com/tags/tag_datalist.asp -->
+<datalist id="usernames"></datalist>
+<input type="submit" value="Login" id="login_button"></input>
+<br />
+<!-- This next part gets filled if there's an error/notification -->
+<b><div id="result" style="color:#000000;font-size:20px;background-color:#00FFFF;"></div></b>
+<br />
+<br />
+<br />
+<br />
+</center>
+
+</div>
+</body>
+</html>

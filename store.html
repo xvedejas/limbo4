@@ -1,0 +1,95 @@
+<html>
+<head>
+<script src="brython.js"></script>
+</head>
+<body onload="brython(1)">
+<div style="background-color:#000000;width:800px;margin:0 auto;color:#FFFFFF;">
+<script type="text/python">
+from browser import doc, alert
+from limbo import async_request, notify
+
+inventory = {"ham": 3, "egg": 1, "spam": 200}
+checkout = {}
+
+def populate(select_list, input_data):
+    """Fill one of the selection lists based on a list of identifying names"""
+    html = "<option value=\"{0}\">{1}x {0}</option>"
+    doc[select_list].html = ''.join(html.format(name, input_data[name]) for name in input_data)
+
+def select_item_event(ev):
+    """Double-clicking on inventory should add to checkout"""
+    item = ev.target.value
+    if inventory[item] == 0:
+        return
+    inventory[item] -= 1
+    if item not in checkout:
+        checkout[item] = 1
+    else:
+        checkout[item] += 1
+    populate("checkout", checkout)
+    populate("inventory", inventory)
+
+def deselect_item_event(ev):
+    """Double-clicking on checkout items should remove them"""
+    item = ev.target.value
+    checkout[item] -= 1
+    inventory[item] += 1
+    if checkout[item] == 0:
+        del checkout[item]
+    populate("checkout", checkout)
+    populate("inventory", inventory)
+
+def clear_items_event(ev):
+    global checkout
+    for item in checkout:
+        inventory[item] += checkout[item]
+    checkout = {}
+    populate("checkout", checkout)
+    populate("inventory", inventory)
+
+username = doc.query.getfirst("username", "")
+
+#if username not in database:
+#    redirect("index.html")
+
+doc["welcome"].html = "Welcome, <b>%s</b>." % username
+populate("inventory", inventory)
+
+doc["inventory"].bind("click", select_item_event)
+doc["checkout"].bind("click", deselect_item_event)
+doc["clear_button"].bind("click", clear_items_event)
+</script>
+
+<center>
+<a href="index.html"><img src="../images/limbo4.png" /></a>
+<div id="welcome" style="font-size:20px;color:#00FFFF;"></div>
+<br />
+<br />
+<br />
+<br />
+<br />
+<table style="color:#FFFFFF;">
+<tr><td>Inventory</td><td>Checkout</td>
+</tr>
+<tr>
+<td><select size=10 style="width:300;" id="inventory"></select></td>
+<td><select size=10 style="width:300;" id="checkout"></select></td>
+</tr>
+<tr>
+<td></td>
+<td><input type="submit" value="Clear" id="clear_button"></input>
+<!-- <input type="submit" value="Checkout" id="checkout_button"></input></td> -->
+</tr>
+</table>
+<br />
+<!-- This next part gets filled if there's an error -->
+<b><div id="result" style="color:#000000;font-size:20px;background-color:#00FFFF;"></div></b>
+<br />
+<br />
+<br />
+<br />
+</center>
+
+</div>
+</body>
+</html>
