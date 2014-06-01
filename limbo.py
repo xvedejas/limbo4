@@ -31,9 +31,8 @@ def async_request(on_complete=None, **kwargs):
     req.send(kwargs)
 
 def redirect(url, **kwargs):
-    # A bug in Brython doesn't let us properly iterate through the kwargs
-    # dictionary. See this issue: https://bitbucket.org/olemis/brython/issue/263/key-value-unpacking-does-not-work
-    window.location.href = (url + '?' + '&'.join('%s=%s' % (key, kwargs[key]) for key in kwargs))
+    window.location.href = (url + '?' +
+        '&'.join('%s=%s' % (key, value) for key, value in kwargs.items()))
 
 # The below gets called on import.
 

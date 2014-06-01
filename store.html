@@ -6,58 +6,84 @@
 <div style="background-color:#000000;width:800px;margin:0 auto;color:#FFFFFF;">
 <script type="text/python">
 from browser import doc, alert
-from limbo import async_request, notify
+from limbo import async_request, notify, redirect
 
-inventory = {"ham": 3, "egg": 1, "spam": 200}
-checkout = {}
+class Item():
+    def __init__(self, database_row):
+        self.name, self.seller, self.count, self.price, self.stock_date, \
+            self.expiry_date, self.desc = database_row
 
-def populate(select_list, input_data):
-    """Fill one of the selection lists based on a list of identifying names"""
-    html = "<option value=\"{0}\">{1}x {0}</option>"
-    doc[select_list].html = ''.join(html.format(name, input_data[name]) for name in input_data)
+class StoreSession():
+    def __init__(self):
+        username = doc.query.getfirst("username", "")
+        async_request(self.is_username_done, action="is_username", username=username)
+        doc["welcome"].html = "Welcome, <b>%s</b>." % username
+        
+        async_request(self.on_get_inventory, action="inventory")
+        
+        doc["in_stock"].bind("click", self.select_item_event)
+        doc["in_stock"].bind("dblclick", self.checkout_event)
+        doc["checkout"].bind("click", self.select_item_event)
+        doc["checkout"].bind("dblclick", self.undo_checkout_event)
+        doc["clear_button"].bind("click", self.clear_items_event)
+    
+    def populate(self, select_list, amount_by_item):
+        """Fills one of the selection lists based on a list of identifying names"""
+        html = "<option value=\"{0}\">{1}x {0} (${2})</option>"
+        doc[select_list].html = ''.join(
+            html.format(itemname,
+                        amount_by_item[itemname],
+                        self.inventory[itemname].price)
+            for itemname in amount_by_item)
+    
+    def is_username_done(self, is_username):
+        """Check to see if we're given a valid username"""
+        if not is_username:
+            redirect("index.html")
+        
+    def on_get_inventory(self, inventory_database_rows):
+        inventory_list = list(map(Item, inventory_database_rows))
+        self.inventory = dict((item.name, item) for item in inventory_list)
+        self.in_stock = dict((item.name, item.count) for item in inventory_list)
+        self.checkout = {}
+        self.populate("in_stock", self.in_stock)
 
-def select_item_event(ev):
-    """Double-clicking on inventory should add to checkout"""
-    item = ev.target.value
-    if inventory[item] == 0:
-        return
-    inventory[item] -= 1
-    if item not in checkout:
-        checkout[item] = 1
-    else:
-        checkout[item] += 1
-    populate("checkout", checkout)
-    populate("inventory", inventory)
+    def select_item_event(self, ev):
+        """Single-clicking on an item should show its description"""
+        item = self.inventory[ev.target.value]
+        doc["description"].html = item.desc
+        
+    def checkout_event(self, ev):
+        """Double-clicking on inventory should add to self.checkout"""
+        item = self.inventory[ev.target.value]
+        if self.in_stock[item.name] == 0:
+            return
+        self.in_stock[item.name] -= 1
+        if item.name not in self.checkout:
+            self.checkout[item.name] = 1
+        else:
+            self.checkout[item.name] += 1
+        self.populate("checkout", self.checkout)
+        self.populate("in_stock", self.in_stock)
 
-def deselect_item_event(ev):
-    """Double-clicking on checkout items should remove them"""
-    item = ev.target.value
-    checkout[item] -= 1
-    inventory[item] += 1
-    if checkout[item] == 0:
-        del checkout[item]
-    populate("checkout", checkout)
-    populate("inventory", inventory)
+    def undo_checkout_event(self, ev):
+        """Double-clicking on self.checkout items should remove them"""
+        item = self.inventory[ev.target.value]
+        self.checkout[item.name] -= 1
+        self.in_stock[item.name] += 1
+        if self.checkout[item.name] == 0:
+            del self.checkout[item.name]
+        self.populate("checkout", self.checkout)
+        self.populate("in_stock", self.in_stock)
 
-def clear_items_event(ev):
-    global checkout
-    for item in checkout:
-        inventory[item] += checkout[item]
-    checkout = {}
-    populate("checkout", checkout)
-    populate("inventory", inventory)
+    def clear_items_event(self, ev):
+        for itemname in self.checkout:
+            self.in_stock[itemname] += self.checkout[itemname]
+        self.checkout = {}
+        self.populate("checkout", self.checkout)
+        self.populate("in_stock", self.in_stock)
 
-username = doc.query.getfirst("username", "")
-
-#if username not in database:
-#    redirect("index.html")
-
-doc["welcome"].html = "Welcome, <b>%s</b>." % username
-populate("inventory", inventory)
-
-doc["inventory"].bind("click", select_item_event)
-doc["checkout"].bind("click", deselect_item_event)
-doc["clear_button"].bind("click", clear_items_event)
+StoreSession()
 </script>
 
 <center>
@@ -72,11 +98,11 @@ doc["clear_button"].bind("click", clear_items_event)
 <tr><td>Inventory</td><td>Checkout</td>
 </tr>
 <tr>
-<td><select size=10 style="width:300;" id="inventory"></select></td>
+<td><select size=10 style="width:300;" id="in_stock"></select></td>
 <td><select size=10 style="width:300;" id="checkout"></select></td>
 </tr>
 <tr>
-<td></td>
+<td><div id="description" style="word-wrap:break-word;"></div></td>
 <td><input type="submit" value="Clear" id="clear_button"></input>
 <!-- <input type="submit" value="Checkout" id="checkout_button"></input></td> -->
 </tr>

@@ -8,17 +8,6 @@
 from browser import doc, alert
 from limbo import async_request, notify, Keycode, redirect
 
-a, b = eval('(1, 2)')
-print(a, b)
-
-# new ideas:
-# - Easy Auditing of current inventory vs recorded discrepencies
-# - Expiration date on stock
-# - Only allowing someone to take on debt if limbo has a net positive balance
-#   (we can debate this all you want but I think a trial period would be nice)
-
-usernames = []
-
 def login_event(ev):
     """This is called when the login button is pressed."""
     login(doc["username"].value)
@@ -44,11 +33,19 @@ def login_done(t):
         #redirect("create_account.html", username=username)
         notify("Error: user '%s' not found." % username)
 
+def create_database_event(ev):
+    async_request(action="init_test_database")
+
+def delete_database_event(ev):
+    async_request(action="delete_test_database")
+
 # Populate the variable "usernames". Todo: have a timeout to reload this.
-async_request(get_usernames_done, action="get_usernames")
+async_request(get_usernames_done, action="usernames")
 
 doc['username'].bind('keydown', keydown_event)
 doc['login_button'].bind('click', login_event)
+doc['create_database_button'].bind('click', create_database_event)
+doc['delete_database_button'].bind('click', delte_database_event)
 
 </script>
 
@@ -65,7 +62,11 @@ doc['login_button'].bind('click', login_event)
 <!-- The datalist tag is populated by get_usernames_done(). For explanation on
      the datalist tag, see http://www.w3schools.com/tags/tag_datalist.asp -->
 <datalist id="usernames"></datalist>
-<input type="submit" value="Login" id="login_button"></input>
+<input type="submit" value="Login/Register" id="login_button"></input>
+<br /><br /><br /><br />
+<!-- Delete the following in production -->
+<input type="submit" value="Create Test Database" id="create_database_button"></input>
+<input type="submit" value="Delete Test Database" id="delete_database_button"></input>
 <br />
 <!-- This next part gets filled if there's an error/notification -->
 <b><div id="result" style="color:#000000;font-size:20px;background-color:#00FFFF;"></div></b>

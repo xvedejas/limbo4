@@ -69,7 +69,7 @@ Limbo Documentation and Discussion
 \end_layout
 
 \begin_layout Part
-What we want out of Limbo, and how to get there
+What we want out of Limbo
 \end_layout
 
 \begin_layout Standard
@@ -124,7 +124,7 @@ non-restrictive
  of ragequits.
 \end_layout
 
-\begin_layout Section*
+\begin_layout Section
 Obtaining Liquidity with a Sales Tax
 \end_layout
 
@@ -198,7 +198,7 @@ Where
  tax grows.
 \end_layout
 
-\begin_layout Section*
+\begin_layout Section
 Fighting Debt with a Debt Tax (Interest Rate)
 \end_layout
 
@@ -215,7 +215,7 @@ This tax would not affect liquidity directly.
  If it correctly incentivizes paying off debt, it will help liquidity.
 \end_layout
 
-\begin_layout Section*
+\begin_layout Section
 Fighting Theft through Subsidies
 \end_layout
 
@@ -232,7 +232,7 @@ Because of the sales tax and debt tax, limbo will slowly gain extra money
 \end_layout
 
 \begin_layout Part
-Coding Perspective
+Coding Perspective and Documentation
 \end_layout
 
 \begin_layout Standard
@@ -249,14 +249,14 @@ We want to make documentation and code easy to browse (point your browser
  to github, rather than having to ssh into titanic)
 \end_layout
 
-\begin_layout Section*
+\begin_layout Section
 Encouraging Hacking
 \end_layout
 
 \begin_layout Standard
 Using fewer technologies makes the barrier to entry much lower.
- Here is the set of technologies needed to understand in order to contribute
- code
+ Here is the set of technologies strictly necessary to understand in order
+ to contribute code
 \end_layout
 
 \begin_layout Itemize
@@ -271,7 +271,7 @@ HTML
 sqlite
 \end_layout
 
-\begin_layout Section*
+\begin_layout Section
 Setting up your Environment
 \end_layout
 
@@ -284,7 +284,7 @@ Apache server on your personal computer
 \end_layout
 
 \begin_layout Itemize
-Apache server + ssh server in VM
+Apache server + ssh server in VM (I recommend virtualbox)
 \end_layout
 
 \begin_layout Itemize
@@ -298,7 +298,7 @@ Then you can use sshfs to locally mount your limbo directory, which you
 ally see the changes.
 \end_layout
 
-\begin_layout Section*
+\begin_layout Section
 Files
 \end_layout
 
@@ -307,6 +307,56 @@ The limbo directory contains httpd.conf, which you might want to copy into
  /etc/httpd/conf/.
  It enables cgi scripts for /srv/http/limbo4/cgi-bin/ for Apache.
  Make sure to backup your original configuration.
+\end_layout
+
+\begin_layout Section
+Common Errors and Debugging Tips
+\end_layout
+
+\begin_layout Subsection
+Debugging CGI script errors
+\end_layout
+
+\begin_layout Standard
+If you get an error with a cgi-script, try opening the path to your script
+ directly in your browser.
+ For example,
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+http://path/to/script.py?arg1=val1&arg2=val2
+\end_layout
+
+\end_inset
+
+It should be possible to find more information in your Apache error logs.
+ These are probably located at 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+/var/log/httpd/error_log
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Debugging Client-side errors
+\end_layout
+
+\begin_layout Standard
+Your webbrowser should have a way to open a console.
+ In Firefox, the shortcut is ctrl+shift+J.
+ This will let you read error output and things like client-side print statement
+s.
 \end_layout
 
 \end_body
