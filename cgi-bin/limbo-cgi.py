@@ -101,28 +101,19 @@ def get_usernames():
             names.append(row[0])
     return names
 
-def is_username(username):
+def get_username(username):
     with sql.connect(database) as connection:
         rows = list(connection.execute("SELECT * FROM Users WHERE Name=?", (username,)))
-    return len(rows) > 0
-
-def login(username):
-    """Arguments:
-            username
-       Return values:
-            success: boolean
-            username: accepted username string, lowercase
-    """
-    username = username.lower()
-    usernames = get_usernames()
-    return (username in usernames, username)
+    if rows:
+        return rows[0]
+    else:
+        return False
 
 # These are the allowed actions of cgi requests.
 actions = {
-    "login": login,
     "usernames": get_usernames,
     "inventory": get_inventory,
-    "is_username": is_username,
+    "username": get_username,
     "init_test_database": initialize_test_database, # remove this line in production
     "delete_test_database": delete_test_database, # remove this line in production
 }

@@ -22,16 +22,16 @@ def get_usernames_done(usernames):
 
 def login(username):
     """This is called when the login button is pressed."""
-    async_request(login_done, action="login", username=username)
+    async_request(login_done, action="username", username=username)
 
-def login_done(t):
-    success, username = t
-    if success:
-        redirect("store.html", username=username)
-    else:
+def login_done(data):
+    if not data:
         # Todo: have a user creation page
         #redirect("create_account.html", username=username)
         notify("Error: user '%s' not found." % username)
+    else:
+        username, email, balance, signup_date = data
+        redirect("store.html", username=username)
 
 def create_database_event(ev):
     async_request(action="init_test_database")
