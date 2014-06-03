@@ -30,14 +30,24 @@ class StoreSession():
         doc["clear_button"].bind("click", self.clear_items_event)
         
     
-    def populate(self, select_list, amount_by_item):
-        """Fills one of the selection lists based on a list of identifying names"""
+    def populate_lists(self):
+        """Fills the selection lists"""
         html = "<option value=\"{0}\" id=\"{0}\">{1}x {0} (${2})</option>"
-        doc[select_list].html = ''.join(
+            
+        doc["in_stock"].html = ''.join(
             html.format(itemname,
                         amount,
                         self.inventory[itemname].price)
-            for itemname, amount in amount_by_item.items())
+            for itemname, amount in self.in_stock.items())
+        doc["checkout"].html = ''.join(
+            html.format(itemname,
+                        amount,
+                        self.inventory[itemname].price)
+            for itemname, amount in self.checkout.items())
+        
+        total = sum(amount * float(self.inventory[itemname].price)
+                    for itemname, amount in self.checkout.items())
+        doc["total"].html = "Your total is $%.2f" % total
     
     def get_username_done(self, data):
         """Check to see if we're given a valid username"""
@@ -52,7 +62,7 @@ class StoreSession():
         self.inventory = dict((item.name, item) for item in inventory_list)
         self.in_stock = dict((item.name, item.count) for item in inventory_list)
         self.checkout = {}
-        self.populate("in_stock", self.in_stock)
+        self.populate_lists()
     
     def focus_test(self, ev):
         print("got focus on stock")
@@ -78,8 +88,7 @@ class StoreSession():
             self.checkout[item.name] = 1
         else:
             self.checkout[item.name] += 1
-        self.populate("checkout", self.checkout)
-        self.populate("in_stock", self.in_stock)
+        self.populate_lists()
 
     def undo_checkout_event(self, ev):
         """Double-clicking on self.checkout items should remove them"""
@@ -88,15 +97,13 @@ class StoreSession():
         self.in_stock[item.name] += 1
         if self.checkout[item.name] == 0:
             del self.checkout[item.name]
-        self.populate("checkout", self.checkout)
-        self.populate("in_stock", self.in_stock)
+        self.populate_lists()
 
     def clear_items_event(self, ev):
         for itemname in self.checkout:
             self.in_stock[itemname] += self.checkout[itemname]
         self.checkout = {}
-        self.populate("checkout", self.checkout)
-        self.populate("in_stock", self.in_stock)
+        self.populate_lists()
 
 StoreSession()
 </script>
@@ -110,7 +117,7 @@ StoreSession()
 <br />
 <br />
 <table style="color:#FFFFFF;">
-<tr><td>Inventory</td><td>Checkout</td>
+<tr><td>Inventory</td><td>Checkout <div id="total"></div></td>
 </tr>
 <tr>
 <td><select size=10 style="width:300;" id="in_stock"></select></td>
