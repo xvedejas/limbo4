@@ -8,6 +8,7 @@ from browser import doc, alert, ajax, window
 
 class Keycode():
     enter = 13
+    delete = 46
 
 timeout = 4
 
@@ -17,7 +18,7 @@ def timeout_error():
 def notify(text):
     doc["result"].html = text
 
-def async_request(on_complete=None, **kwargs):
+def request(async, on_complete=None, **kwargs):
     """All calls go to cgi-bin/limbo.py; exactly what is done depends on the
        arguments passed. """
     req = ajax.ajax()
@@ -26,9 +27,15 @@ def async_request(on_complete=None, **kwargs):
     if on_complete:
         req.bind('complete', callback)
     req.set_timeout(timeout, timeout_error)
-    req.open('POST', 'cgi-bin/limbo-cgi.py', async=True)
+    req.open('POST', 'cgi-bin/limbo-cgi.py', async=async)
     req.set_header('content-type', 'application/x-www-form-urlencoded')
     req.send(kwargs)
+
+def async_request(on_complete=None, **kwargs):
+    request(async=True, on_complete=on_complete, **kwargs)
+    
+def sync_request(on_complete=None, **kwargs):
+    request(async=False, on_complete=on_complete, **kwargs)
 
 def redirect(url, **kwargs):
     window.location.href = (url + '?' +

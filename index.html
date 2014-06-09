@@ -3,7 +3,7 @@
 <script src="brython.js"></script>
 </head>
 <body onload="brython(1)">
-<div style="background-color:#000000;width:800px;margin:0 auto;color:#FFFFFF;">
+<div style="background-color:#000000;width:1200px;margin:0 auto;color:#FFFFFF;">
 <script type="text/python">
 from browser import doc, alert
 from limbo import async_request, notify, Keycode, redirect
@@ -28,7 +28,7 @@ def login_done(data):
     if not data:
         # Todo: have a user creation page
         #redirect("create_account.html", username=username)
-        notify("Error: user '%s' not found." % username)
+        notify("Error: user '%s' not found." % doc["username"].value)
     else:
         username, email, balance, signup_date = data
         redirect("store.html", username=username)
@@ -45,7 +45,7 @@ async_request(get_usernames_done, action="usernames")
 doc['username'].bind('keydown', keydown_event)
 doc['login_button'].bind('click', login_event)
 doc['create_database_button'].bind('click', create_database_event)
-doc['delete_database_button'].bind('click', delte_database_event)
+doc['delete_database_button'].bind('click', delete_database_event)
 
 </script>
 
@@ -54,26 +54,39 @@ doc['delete_database_button'].bind('click', delte_database_event)
 <br />
 <br />
 <br />
+<div style="width:420px;text-align:left;">
+Limbo4 is an honor code store. You are trusted to pay according to the listed
+price of any items you take from this store. Please record <u>all</u>
+transactions. <a href="info.html">More Info</a></div>
 <br />
 <br />
 <!-- The text input uses the datalist tag to suggest autocomplete terms.
      This is separate from browser autocomplete, which we want to specify as off. -->
-<input type="text" id="username" name="username" list="usernames" autofocus autocomplete="off"></input>
+<input type="text" id="username" name="username" list="usernames" autocomplete="off" placeholder="Who are you?" autofocus></input>
 <!-- The datalist tag is populated by get_usernames_done(). For explanation on
      the datalist tag, see http://www.w3schools.com/tags/tag_datalist.asp -->
 <datalist id="usernames"></datalist>
 <input type="submit" value="Login/Register" id="login_button"></input>
-<br /><br /><br /><br />
-<!-- Delete the following in production -->
-<input type="submit" value="Create Test Database" id="create_database_button"></input>
-<input type="submit" value="Delete Test Database" id="delete_database_button"></input>
+<br />
 <br />
 <!-- This next part gets filled if there's an error/notification -->
 <b><div id="result" style="color:#000000;font-size:20px;background-color:#00FFFF;"></div></b>
 <br />
+<input type="submit" value="See Limbo Statistics (todo)" id="stats_button"></input>
 <br />
 <br />
+<input type="text" id="donation" placeholder="Donation (USD amount)" autofocus></input>
+<input type="submit" value="I Donated Cash" id="donate_button"></input>
 <br />
+<br />
+<br /><br /><br /><br />
+<!-- Delete the following in production -->
+Testing functions:
+<br />
+<br />
+<input type="submit" value="Create Test Database" id="create_database_button"></input>
+<input type="submit" value="Delete Test Database" id="delete_database_button"></input>
+<br /><br /><br /><br />
 </center>
 
 </div>

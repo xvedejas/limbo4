@@ -30,6 +30,8 @@ def initialize_test_database():
                             Email    TEXT NOT NULL,
                             Balance  TEXT NOT NULL,
                             JoinDate INTEGER NOT NULL)""")
+        # Stock is no longer valid if Count is zero or if it's after the expiry
+        # date.
         connection.execute("""CREATE TABLE Items(
                             Name         TEXT NOT NULL UNIQUE,
                             Seller       TEXT NOT NULL,
