@@ -16,8 +16,7 @@ class Item():
 class StoreSession():
     def __init__(self):
         username = doc.query.getfirst("username", "")
-        sync_request(self.get_username_done, action="username", username=username)
-        sync_request(self.on_get_inventory, action="inventory")
+        sync_request(self.get_store_info_done, action="store_info", username=username)
         
         doc["in_stock"].bind("click", self.select_item_event)
         doc["in_stock"].bind("dblclick", self.checkout_event)
@@ -63,19 +62,19 @@ class StoreSession():
         new_balance = self.balance - total + self.payment
         doc["new_balance"].html = "Your new balance will be $%.2f" % new_balance
     
-    def get_username_done(self, data):
-        """Check to see if we're given a valid username"""
-        if not data:
+    def get_store_info_done(self, t):
+        userinfo, my_stock, all_stock = t
+        if not userinfo:
+            # Invalid username
             redirect("index.html")
-        username, email, balance, signup_date = data
+        username, email, balance, signup_date = userinfo
         self.balance = float(balance)
         doc["welcome"].html = ("Welcome, <b>%s</b>. Your balance is $%.2f." %
                                (username, self.balance))
         doc["new_balance"].html = ("Your new balance will be $%.2f" %
                                    self.balance)
         
-    def on_get_inventory(self, inventory_database_rows):
-        inventory_list = list(map(Item, inventory_database_rows))
+        inventory_list = list(map(Item, all_stock))
         self.inventory = dict((item.name, item) for item in inventory_list)
         self.in_stock = dict((item.name, item.count) for item in inventory_list)
         self.checkout = {}
@@ -116,7 +115,10 @@ class StoreSession():
         item = self.inventory[ev.target.value]
         if self.in_stock[item.name] == 0:
             return
-        self.checkout[item.name] = self.in_stock[item.name]
+        if item.name not in self.checkout:
+            self.checkout[item.name] = self.in_stock[item.name]
+        else:
+            self.checkout[item.name] += self.in_stock[item.name]
         self.in_stock[item.name] = 0
         self.populate_lists()
 
@@ -184,7 +186,7 @@ StoreSession()
         <td><select size=10 style="width:500;height:200;" id="checkout"></td>
     </tr>
     <tr>
-        <td id="description" rowspan=2></td>
+        <td style="width:500;" id="description" rowspan=2></td>
         <td>
             <input type="submit" value="Clear All" id="clear_button">
         </td>
@@ -203,7 +205,7 @@ StoreSession()
             <b>My Inventory</b>
             <br>double click to remove one, press delete to remove all
         </td>
-        <td>My Sales:</td>
+        <td><b>My Transactions History</b></td>
     </tr>
     <tr>
         <td><select size=10 style="width:500;height:200;" id="inventory"></td>
