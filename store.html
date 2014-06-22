@@ -61,9 +61,16 @@ class StoreSession():
         doc["total"].html = "Your total is $%.2f" % total
         new_balance = self.balance - total + self.payment
         doc["new_balance"].html = "Your new balance will be $%.2f" % new_balance
+        
+        doc["my_stock"].html = ''.join(
+			html.format(itemname,
+                        item.count,
+                        item.price)
+            for itemname, item in self.my_stock.items())
+			
     
     def get_store_info_done(self, t):
-        userinfo, my_stock, all_stock = t
+        userinfo, all_stock = t
         if not userinfo:
             # Invalid username
             redirect("index.html")
@@ -78,6 +85,9 @@ class StoreSession():
         self.inventory = dict((item.name, item) for item in inventory_list)
         self.in_stock = dict((item.name, item.count) for item in inventory_list)
         self.checkout = {}
+        
+        self.my_stock = dict((item.name, item) for item in inventory_list if item.seller == username)
+        
         self.populate_lists()
     
     def focus_test(self, ev):
@@ -174,7 +184,7 @@ StoreSession()
 <br>
 <table style="color:#FFFFFF;">
     <tr>
-        <td><b>In Stock</b><br>double click to move to checkout</td>
+        <td><b>In Stock</b><br>double click to move to checkout, press enter to select all</td>
         <td><b>Checkout</b><br>double click to remove one, press delete to remove all</td>
     </tr>
     <tr>
@@ -208,8 +218,44 @@ StoreSession()
         <td><b>My Transactions History</b></td>
     </tr>
     <tr>
-        <td><select size=10 style="width:500;height:200;" id="inventory"></td>
+        <td><select size=10 style="width:500;height:200;" id="my_stock"></td>
         <td><select size=10 style="width:500;height:200;" id="sales"></td>
+    </tr>
+    <tr>
+        <td height="50px"></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><b>Add Stock to Limbo:</b></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td align="right">Item Name</td>
+        <td><input type="text"></td>
+    </tr>
+    <tr>
+        <td align="right">Count</td>
+        <td><input type="text"></td>
+    </tr>
+    <tr>
+        <td align="right">Description</td>
+        <td><textarea rows="4" cols="50"></textarea></td>
+    </tr>
+    <tr>
+        <td align="right">Expiration Time (weeks)</td>
+        <td><input type="text"></td>
+    </tr>
+    <tr>
+        <td align="right">List Price</td>
+        <td><input type="text"></td>
+    </tr>
+    <tr>
+        <td align="right">Sales Tax % (optional)</td>
+        <td><input type="text"></td>
+    </tr>
+    <tr>
+        <td align="right"><input type="submit" value="clear"></td>
+        <td><input type="submit" value="add stock"></td>
     </tr>
 </table>
 <br>

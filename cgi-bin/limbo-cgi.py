@@ -29,21 +29,28 @@ def initialize_test_database():
                             Name     TEXT PRIMARY KEY NOT NULL,
                             Email    TEXT NOT NULL,
                             Balance  TEXT NOT NULL,
-                            JoinDate INTEGER NOT NULL)""")
+                            JoinDate TEXT NOT NULL)""")
         # Stock is no longer valid if Count is zero or if it's after the expiry
         # date.
         connection.execute("""CREATE TABLE Items(
-                              Name         TEXT NOT NULL UNIQUE,
-                              Seller       TEXT NOT NULL,
+                              Name         TEXT PRIMARY KEY NOT NULL,
                               Count     INTEGER NOT NULL,
                               Price        TEXT NOT NULL,
                               StockDate    TEXT NOT NULL,
                               ExpiryDate   TEXT NOT NULL,
                               Description  TEXT)""")
+        # An item is allowed multiple sellers. We keep this in a separate table.
+        # The "profit split" should be a percentage of the price, and should
+        # always sum up to 100% or less (in the case of optional limbo tax).
+        connection.execute("""CREATE TABLE Sellers(
+                              ItemName     TEXT NOT NULL,
+                              Seller       TEXT NOT NULL,
+                              ProfitSplit  TEXT NOT NULL)""")
         # A "Transaction" is either a purchase, money transfer, withdrawal, or
         # deposit. For a purchase, all fields need to be filled. For a transfer,
         # the "item" field is NULL. For a withdrawal, the Seller and Item fields
         # are NULL. For a deposit, the Buyer and Item fields are NULL.
+        # If there were multiple sellers, then use multiple rows.
         connection.execute("""CREATE TABLE Transactions(
                               Date       TEXT NOT NULL,
                               Buyer      TEXT,
@@ -60,22 +67,25 @@ def initialize_test_database():
         add_user("mole", "mole@blacker.caltech.edu")
         add_user("srmole", "srmole@blacker.caltech.edu")
         
-        add_item("snapple", "jrmole", 24, Decimal('1.23'), 52, 'A Juicy Beverage')
-        add_item("Lorem ipsum", "mole", 2, Decimal('1.55'), 24, 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.')
+        add_item("snapple", {"jrmole": 1.00}, 24, Decimal('1.23'), 52, 'A Juicy Beverage')
+        add_item("Lorem ipsum", {"mole": 0.90}, 2, Decimal('1.55'), 24, 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.')
     return True
 
 def delete_test_database():
     import os
     os.remove(database)
 
-def add_item(itemname, sellername, count, price, expiry_time_in_weeks, description=''):
+def add_item(itemname, sellers, count, price, expiry_time_in_weeks, description=''):
     with sql.connect(database) as connection:
         duration = datetime.timedelta(weeks=expiry_time_in_weeks)
         stockdate = datetime.datetime.now()
         expirydate = stockdate + duration
-        connection.execute("INSERT INTO Items VALUES(?, ?, ?, ?, ?, ?, ?)",
-                           (itemname, sellername, count, str(price), stockdate,
+        connection.execute("INSERT INTO Items VALUES(?, ?, ?, ?, ?, ?)",
+                           (itemname, count, str(price), stockdate,
                             expirydate, description))
+        for seller, profit_split in sellers.items():
+            connection.execute("INSERT INTO Sellers VALUES(?, ?, ?)",
+                           (itemname, seller, profit_split))
 
 def add_user(username, email):
     with sql.connect(database) as connection:
@@ -118,9 +128,8 @@ def get_store_info(username):
     userinfo = get_username(username)
     if not username:
         return False
-    my_stock = get_user_stock(username)
     all_stock = get_all_stock()
-    return (userinfo, my_stock, all_stock)
+    return (userinfo, all_stock)
 
 # These are the allowed actions of cgi requests.
 actions = {
