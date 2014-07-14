@@ -27,10 +27,9 @@ def login(username):
 def login_done(data):
     if not data:
         # Todo: have a user creation page
-        #redirect("create_account.html", username=username)
-        notify("Error: user '%s' not found." % doc["username"].value)
+        redirect("create_account.html", username=doc["username"].value)
     else:
-        username, email, balance, signup_date = data
+        username, email, balance, uid, signup_date = data
         redirect("store.html", username=username)
 
 def create_database_event(ev):

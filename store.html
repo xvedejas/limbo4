@@ -18,6 +18,29 @@ class StoreSession():
         username = doc.query.getfirst("username", "")
         sync_request(self.get_store_info_done, action="store_info", username=username)
         
+    def get_store_info_done(self, t):
+        userinfo, all_stock, usernames = t
+        self.usernames = usernames
+        if not userinfo:
+            # Invalid username
+            redirect("index.html")
+        username, email, balance, uid, signup_date = userinfo
+        self.balance = float(balance)
+        doc["welcome"].html = ("Welcome, <b>%s</b>. Your balance is $%.2f." %
+                               (username, self.balance))
+        doc["new_balance"].html = ("Your new balance will be $%.2f" %
+                                   self.balance)
+        
+        inventory_list = list(map(Item, all_stock))
+        self.inventory = dict((item.name, item) for item in inventory_list)
+        self.in_stock = dict((item.name, item.count) for item in inventory_list)
+        self.checkout = {}
+        
+        self.my_stock = dict((item.name, item) for item in inventory_list if item.seller == username)
+        
+        self.payment = 0.0
+        self.populate_lists()
+        
         doc["in_stock"].bind("click", self.select_item_event)
         doc["in_stock"].bind("dblclick", self.checkout_event)
         doc["in_stock"].bind("keyup", self.checkout_all_event)
@@ -33,6 +56,19 @@ class StoreSession():
         
         doc['payment'].bind('keyup', self.set_payment_event)
         self.payment = 0.0
+        
+        doc["inventory"].bind("dblclick", self.remove_inventory_event)
+        doc["inventory"].bind("keyup", self.remove_inventory_key_event)
+        
+        # Fill in usernames autocomplete in stocking items form
+        doc["additional_sellers"].html = ''.join('<option value="%s">' % user
+                                                 for user in self.usernames)
+    
+    def remove_inventory_key_event(self, ev):
+        pass
+            
+    def remove_inventory_event(self, ev):
+        pass
     
     def set_payment_event(self, ev):
         try:
@@ -62,36 +98,11 @@ class StoreSession():
         new_balance = self.balance - total + self.payment
         doc["new_balance"].html = "Your new balance will be $%.2f" % new_balance
         
-        doc["my_stock"].html = ''.join(
+        doc["inventory"].html = ''.join(
 			html.format(itemname,
                         item.count,
                         item.price)
             for itemname, item in self.my_stock.items())
-			
-    
-    def get_store_info_done(self, t):
-        userinfo, all_stock = t
-        if not userinfo:
-            # Invalid username
-            redirect("index.html")
-        username, email, balance, signup_date = userinfo
-        self.balance = float(balance)
-        doc["welcome"].html = ("Welcome, <b>%s</b>. Your balance is $%.2f." %
-                               (username, self.balance))
-        doc["new_balance"].html = ("Your new balance will be $%.2f" %
-                                   self.balance)
-        
-        inventory_list = list(map(Item, all_stock))
-        self.inventory = dict((item.name, item) for item in inventory_list)
-        self.in_stock = dict((item.name, item.count) for item in inventory_list)
-        self.checkout = {}
-        
-        self.my_stock = dict((item.name, item) for item in inventory_list if item.seller == username)
-        
-        self.populate_lists()
-    
-    def focus_test(self, ev):
-        print("got focus on stock")
     
     def select_item_event(self, ev):
         """Single-clicking on an item should show its description"""
@@ -170,6 +181,19 @@ class StoreSession():
         if all_hidden:
             for option in doc["in_stock"].children:
                 option.hidden = False
+    
+    def add_seller(self, ev):
+        pass
+    
+    def stock_event(self, ev):
+        async_request(self.stock_item_done,
+                      action="add_item",
+                      itemname=doc["itemname"].value,
+                      sellers="",
+                      count=doc["itemcount"].value,
+                      price=doc["price"].value,
+                      expiry_time_in_weeks=doc["expiry"].value,
+                      description=doc["description"].value)
 
 StoreSession()
 </script>
@@ -218,8 +242,13 @@ StoreSession()
         <td><b>My Transactions History</b></td>
     </tr>
     <tr>
-        <td><select size=10 style="width:500;height:200;" id="my_stock"></td>
+        <td><select size=10 style="width:500;height:200;" id="inventory"></td>
         <td><select size=10 style="width:500;height:200;" id="sales"></td>
+    </tr>
+    <tr>
+        <td><input type="submit" value="confirm" id="confirm_remove_inventory">
+            <input type="submit" value="clear" id="clear_remove_inventory"></td>
+        <td></td>
     </tr>
     <tr>
         <td height="50px"></td>
@@ -231,27 +260,39 @@ StoreSession()
     </tr>
     <tr>
         <td align="right">Item Name</td>
-        <td><input type="text"></td>
+        <td><input type="text" id="itemname"></td>
     </tr>
     <tr>
         <td align="right">Count</td>
-        <td><input type="text"></td>
+        <td><input type="text" id="itemcount"></td>
     </tr>
     <tr>
         <td align="right">Description</td>
-        <td><textarea rows="4" cols="50"></textarea></td>
+        <td><textarea rows="4" cols="50" id="description"></textarea></td>
     </tr>
     <tr>
-        <td align="right">Expiration Time (weeks)</td>
-        <td><input type="text"></td>
+        <td align="right">Expiration Time</td>
+        <td><input type="text" id="expiry" placeholder="weeks from now, max 52"></td>
     </tr>
     <tr>
-        <td align="right">List Price</td>
-        <td><input type="text"></td>
+        <td align="right">Listed Price Each</td>
+        <td><input type="text" id="price"></td>
     </tr>
     <tr>
-        <td align="right">Sales Tax % (optional)</td>
-        <td><input type="text"></td>
+        <td align="right">Limbo Sales Tax (default 5%)</td>
+        <td><input type="text" value="5.0"><div id="profits_each"></div></td>
+    </tr>
+    <tr>
+        <td align="right">Add additional seller to split profits?</td>
+        <td>
+        <!-- The text input uses the datalist tag to suggest autocomplete terms.
+             This is separate from browser autocomplete, which we want to specify as off. -->
+        <input type="text" id="additional_seller" list="usernames" autocomplete="off" placeholder="seller">
+        <!-- The datalist tag is populated by get_usernames_done(). For explanation on
+             the datalist tag, see http://www.w3schools.com/tags/tag_datalist.asp -->
+        <datalist id="additional_sellers"></datalist>
+        <input type="text" placeholder="percent of profits">
+        </td>
     </tr>
     <tr>
         <td align="right"><input type="submit" value="clear"></td>

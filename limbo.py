@@ -15,8 +15,14 @@ timeout = 4
 def timeout_error():
     notify("Server didn't reply after %s seconds" % limbo.timeout)
 
-def notify(text):
-    doc["result"].html = text
+# We want to make sure that there is a field with id "result" which we can put
+# error text in (or possibly other notifications)
+if "result" in doc:
+    def notify(text):
+        doc["result"].html = text
+else:
+    def notify(text):
+        print("Notifications won't work")
 
 def request(async, on_complete=None, **kwargs):
     """All calls go to cgi-bin/limbo.py; exactly what is done depends on the
@@ -42,7 +48,3 @@ def redirect(url, **kwargs):
         '&'.join('%s=%s' % (key, value) for key, value in kwargs.items()))
 
 # The below gets called on import.
-
-# We want to make sure that there is a field with id "result" which we can put
-# error text in (or possibly other notifications)
-assert doc["result"]

@@ -5,31 +5,36 @@
 print("Content-Type:text/html\n\n")
 
 import cgi, cgitb
-import sqlite3 as sql    
-from decimal import *
-getcontext().prec = 6
+import sqlite3 as sql
+import decimal
+from decimal import Decimal
+decimal.getcontext().prec = 6
 import datetime
 cgitb.enable()
 form = cgi.FieldStorage()
 
-# There's a decent sqlite tutorial here: http://zetcode.com/db/sqlitepythontutorial/
+# There's a decent sqlite tutorial here:
+# http://zetcode.com/db/sqlitepythontutorial/
 database = 'limbo4.db'
 
-def round(decimal):
-    decimal.quantize(Decimal('.01'), rounding=ROUND_DOWN)
+def decimal_round(d):
+    d.quantize(Decimal('.01'), rounding=decimal.ROUND_DOWN)
 
 def initialize_test_database():
     """This function should only be called on an empty new database. This
        function should also be where you create fake users/items for testing."""
     with sql.connect(database) as connection:
         # Some notes on data storage:
-        # Balance/Price are python decimal amounts, so they are stored as their text representation
-        # All dates are stored in ISO 8601 format, which are the default string representation of datetime objects.
+        # Balance/Price are python decimal amounts, so they are stored as their
+        # text representation.
+        # All dates are stored in ISO 8601 format, which are the default string
+        # representation of datetime objects.
         connection.execute("""CREATE TABLE Users(
-                            Name     TEXT PRIMARY KEY NOT NULL,
-                            Email    TEXT NOT NULL,
-                            Balance  TEXT NOT NULL,
-                            JoinDate TEXT NOT NULL)""")
+                            Name      TEXT PRIMARY KEY NOT NULL,
+                            Email     TEXT NOT NULL,
+                            Balance   TEXT NOT NULL,
+                            CaltechID INTEGER NOT NULL,
+                            JoinDate  TEXT NOT NULL)""")
         # Stock is no longer valid if Count is zero or if it's after the expiry
         # date.
         connection.execute("""CREATE TABLE Items(
@@ -66,16 +71,19 @@ def initialize_test_database():
         add_user("socialmole", "socialmole@blacker.caltech.edu")
         add_user("mole", "mole@blacker.caltech.edu")
         add_user("srmole", "srmole@blacker.caltech.edu")
-        
-        add_item("snapple", {"jrmole": 1.00}, 24, Decimal('1.23'), 52, 'A Juicy Beverage')
-        add_item("Lorem ipsum", {"mole": 0.90}, 2, Decimal('1.55'), 24, 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.')
+
+        add_item("snapple", {"jrmole": 1.00}, 24, Decimal('1.23'), 52,
+                 'A Juicy Beverage')
+        add_item("Lorem ipsum", {"mole": 0.90}, 2, Decimal('1.55'), 24,
+                 """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
     return True
 
 def delete_test_database():
     import os
     os.remove(database)
 
-def add_item(itemname, sellers, count, price, expiry_time_in_weeks, description=''):
+def add_item(itemname, sellers, count, price, expiry_time_in_weeks,
+             description=''):
     with sql.connect(database) as connection:
         duration = datetime.timedelta(weeks=expiry_time_in_weeks)
         stockdate = datetime.datetime.now()
@@ -85,14 +93,14 @@ def add_item(itemname, sellers, count, price, expiry_time_in_weeks, description=
                             expirydate, description))
         for seller, profit_split in sellers.items():
             connection.execute("INSERT INTO Sellers VALUES(?, ?, ?)",
-                           (itemname, seller, profit_split))
+                               (itemname, seller, profit_split))
 
-def add_user(username, email):
+def add_user(username, email, uid=0):
     with sql.connect(database) as connection:
         balance = Decimal('0.00')
         joindate = datetime.datetime.now()
-        connection.execute("INSERT INTO Users VALUES(?, ?, ?, ?)",
-                           (username, email, str(balance), joindate))
+        connection.execute("INSERT INTO Users VALUES(?, ?, ?, ?, ?)",
+                           (username, str(email), str(balance), int(uid), joindate))
 
 def get_all_stock():
     with sql.connect(database) as connection:
@@ -102,7 +110,8 @@ def get_all_stock():
 def get_user_stock(username):
     rows = []
     with sql.connect(database) as connection:
-        for row in connection.execute("SELECT * FROM Items WHERE Name=?", (username,)):
+        for row in connection.execute("SELECT * FROM Items WHERE Name=?",
+                                      (username,)):
             rows.append(row)
     return rows
 
@@ -115,7 +124,8 @@ def get_usernames():
 
 def get_username(username):
     with sql.connect(database) as connection:
-        rows = list(connection.execute("SELECT * FROM Users WHERE Name=?", (username,)))
+        rows = list(connection.execute("SELECT * FROM Users WHERE Name=?",
+                                       (username,)))
     if rows:
         return rows[0]
     else:
@@ -129,15 +139,27 @@ def get_store_info(username):
     if not username:
         return False
     all_stock = get_all_stock()
-    return (userinfo, all_stock)
+    usernames = get_usernames()
+    return (userinfo, all_stock, usernames)
+
+def remove_item(itemname, count_to_remove):
+    """If count_to_remove >= count, removes all."""
+    pass
+
+def check_expired_stock():
+    pass # todo
 
 # These are the allowed actions of cgi requests.
 actions = {
+    "add_user": add_user,
     "usernames": get_usernames,
     "username": get_username,
     "store_info": get_store_info,
-    "init_test_database": initialize_test_database, # remove this line in production
-    "delete_test_database": delete_test_database, # remove this line in production
+    "add_item": add_item,
+    "remove_item": remove_item,
+    # remove the following lines in production
+    "init_test_database": initialize_test_database,
+    "delete_test_database": delete_test_database,
 }
 
 def main():
