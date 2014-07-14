@@ -101,6 +101,7 @@ def add_user(username, email, uid=0):
         joindate = datetime.datetime.now()
         connection.execute("INSERT INTO Users VALUES(?, ?, ?, ?, ?)",
                            (username, str(email), str(balance), int(uid), joindate))
+    return True
 
 def get_all_stock():
     with sql.connect(database) as connection:
@@ -117,7 +118,7 @@ def get_user_stock(username):
     with sql.connect(database) as connection:
         for row in connection.execute("SELECT ItemName FROM Sellers WHERE Seller=?",
                                       (username,)):
-            rows.append(row)
+            rows.append(row[0])
     return rows
 
 def get_usernames():

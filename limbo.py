@@ -17,10 +17,11 @@ def timeout_error():
 
 # We want to make sure that there is a field with id "result" which we can put
 # error text in (or possibly other notifications)
-if "result" in doc:
+try:
+    doc["result"]
     def notify(text):
         doc["result"].html = text
-else:
+except:
     def notify(text):
         print("Notifications won't work")
 
