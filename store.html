@@ -10,8 +10,10 @@ from limbo import async_request, sync_request, notify, redirect, Keycode
 
 class Item():
     def __init__(self, database_row):
-        self.name, self.seller, self.count, self.price, self.stock_date, \
+        self.name, self.count, self.price, self.stock_date, \
             self.expiry_date, self.desc = database_row
+    def __str__(self):
+        return "%s %s %s" % (self.name, self.count)
 
 class StoreSession():
     def __init__(self):
@@ -19,7 +21,7 @@ class StoreSession():
         sync_request(self.get_store_info_done, action="store_info", username=username)
         
     def get_store_info_done(self, t):
-        userinfo, all_stock, usernames = t
+        userinfo, all_stock, usernames, user_stock = t
         self.usernames = usernames
         if not userinfo:
             # Invalid username
@@ -31,12 +33,14 @@ class StoreSession():
         doc["new_balance"].html = ("Your new balance will be $%.2f" %
                                    self.balance)
         
+        # Build a list of all things in-stock
         inventory_list = list(map(Item, all_stock))
         self.inventory = dict((item.name, item) for item in inventory_list)
         self.in_stock = dict((item.name, item.count) for item in inventory_list)
         self.checkout = {}
         
-        self.my_stock = dict((item.name, item) for item in inventory_list if item.seller == username)
+        # And the user's own stock
+        self.my_stock = dict((itemname, self.inventory[itemname]) for itemname in user_stock)
         
         self.payment = 0.0
         self.populate_lists()

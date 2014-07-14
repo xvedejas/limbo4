@@ -107,10 +107,15 @@ def get_all_stock():
         rows = list(connection.execute("SELECT * FROM Items"))
     return rows
 
+def get_sellers(itemname):
+    with sql.connect(database) as connection:
+        rows = list(connection.execute("SELECT Seller FROM Sellers WHERE ItemName=?", itemname))
+    return rows
+
 def get_user_stock(username):
     rows = []
     with sql.connect(database) as connection:
-        for row in connection.execute("SELECT * FROM Items WHERE Name=?",
+        for row in connection.execute("SELECT ItemName FROM Sellers WHERE Seller=?",
                                       (username,)):
             rows.append(row)
     return rows
@@ -140,7 +145,8 @@ def get_store_info(username):
         return False
     all_stock = get_all_stock()
     usernames = get_usernames()
-    return (userinfo, all_stock, usernames)
+    user_stock = get_user_stock(username)
+    return (userinfo, all_stock, usernames, user_stock)
 
 def remove_item(itemname, count_to_remove):
     """If count_to_remove >= count, removes all."""
