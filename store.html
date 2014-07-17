@@ -5,7 +5,7 @@
 <body onload="brython(1)">
 <div style="background-color:#000000;width:1200px;margin:0 auto;color:#FFFFFF;">
 <script type="text/python">
-from browser import doc, alert
+from browser import doc, alert, html
 from limbo import async_request, sync_request, notify, redirect, Keycode
 
 class Item():
@@ -17,8 +17,10 @@ class Item():
 
 class StoreSession():
     def __init__(self):
-        username = doc.query.getfirst("username", "")
-        sync_request(self.get_store_info_done, action="store_info", username=username)
+        self.username = doc.query.getfirst("username", "")
+        sync_request(self.get_store_info_done,
+                     action="store_info",
+                     username=self.username)
         
     def get_store_info_done(self, t):
         userinfo, all_stock, usernames, user_stock = t
@@ -62,17 +64,19 @@ class StoreSession():
         self.payment = 0.0
         
         doc["inventory"].bind("dblclick", self.remove_inventory_event)
-        doc["inventory"].bind("keyup", self.remove_inventory_key_event)
+        doc["inventory"].bind("keyup", self.inventory_key_event)
         
-        # Fill in usernames autocomplete in stocking items form
-        doc["additional_sellers"].html = ''.join('<option value="%s">' % user
-                                                 for user in self.usernames)
-    
-    def remove_inventory_key_event(self, ev):
-        pass
-            
-    def remove_inventory_event(self, ev):
-        pass
+        doc["add_seller"].bind("click", self.add_seller_space_event)
+        self.seller_count = 1
+        
+        doc["usernames"].html = ''.join('<option value="%s">' % user
+                                        for user in self.usernames
+                                        if user != self.username)
+        
+        doc["add_item"].bind("click", self.stock_event)
+        
+        doc['price'].bind('keyup', self.change_profits_event)
+        doc['tax'].bind('keyup', self.change_profits_event)
     
     def set_payment_event(self, ev):
         try:
@@ -103,7 +107,7 @@ class StoreSession():
         doc["new_balance"].html = "Your new balance will be $%.2f" % new_balance
         
         doc["inventory"].html = ''.join(
-			html.format(itemname,
+            html.format(itemname,
                         item.count,
                         item.price)
             for itemname, item in self.my_stock.items())
@@ -186,18 +190,86 @@ class StoreSession():
             for option in doc["in_stock"].children:
                 option.hidden = False
     
-    def add_seller(self, ev):
-        pass
+    def done_change_inventory(self, res):
+        self.populate_lists()
+    
+    def inventory_key_event(self, ev):
+        """Delete key or plus key on our personal stock"""
+        if ev.keyCode == Keycode.delete:
+            item = self.inventory[ev.target.value]
+            async_request(done_change_inventory, action="remove", item=item, count="all")
+        elif ev.keyCode == Keycode.plus:
+            item = self.inventory[ev.target.value]
+            async_request(done_change_inventory, action="add", item=item, count="1")
+            
+    def remove_inventory_event(self, ev):
+        """Double click on our personal stock"""
+        item = self.inventory[ev.target.value]
+        async_request(done_change_inventory, action="remove", item=item, count="1")
+    
+    def add_seller_space_event(self, ev):
+        """Fill in usernames autocomplete in stocking items form"""
+        self.seller_count += 1
+        # The text input uses the datalist tag to suggest autocomplete terms.
+        # This is separate from browser autocomplete, which we want to specify as off.
+        # The datalist tag is populated by get_usernames_done(). For explanation on
+        # the datalist tag, see http://www.w3schools.com/tags/tag_datalist.asp
+        ## There appears to be a strange error here where it thinks we're in
+        ## the __main__ scope??
+        seller_id = "additional_seller" + str(self.seller_count)
+        profit_id = "additional_seller_profit" + str(self.seller_count)
+        entry = html.TR(html.TD(html.INPUT(type="text",
+                                           id=seller_id,
+                                           list="usernames",
+                                           autocomplete="off",
+                                           placeholder="seller"),
+                                align="right") +
+                        html.TD(html.INPUT(type="text",
+                                           placeholder="percent of profits",
+                                           id=profit_id)))
+        doc["stocking_table"] <= entry
+        doc[profit_id].bind("keyup", self.change_profits_event)
+    
+    def change_profits_event(self, ev):
+        values = [doc["additional_seller_profit" + str(seller + 2)].value
+                  for seller in range(self.seller_count - 1)]
+        total = 0.0
+        for value in values:
+            if value:
+                total += float(value)
+        total += float(doc["tax"].value)
+        percent = 100.0 - total
+        listed_price_each = float(doc["price"].value)
+        doc["your_percentage"].html = str(percent) + '%'
+        doc["your_income"].html = '$%.2f' % (percent * 0.01 * listed_price_each)
     
     def stock_event(self, ev):
-        async_request(self.stock_item_done,
-                      action="add_item",
-                      itemname=doc["itemname"].value,
-                      sellers="",
-                      count=doc["itemcount"].value,
-                      price=doc["price"].value,
-                      expiry_time_in_weeks=doc["expiry"].value,
-                      description=doc["description"].value)
+        ## todo: check for existing items of the same name. We want to allow
+        ## adding a number to existing stock.
+        assert doc["itemname"].value
+        assert int(doc["itemcount"].value)
+        assert doc["description"].value
+        assert int(doc["expiry"].value)
+        assert float(doc["price"].value)
+        assert float(doc["tax"].value)
+        
+        additional_sellers = [doc["additional_seller" + str(seller + 2)].value
+                              for seller in range(self.seller_count - 1)]
+        additional_seller_profits = [doc["additional_seller_profit" +
+                                         str(seller + 2)].value
+                                     for seller in range(self.seller_count - 1)]
+        assert self.username not in additional_sellers
+        sellers += [self.username]
+        
+        
+        #~ async_request(self.stock_item_done,
+                      #~ action="add_item",
+                      #~ itemname=doc["itemname"].value,
+                      #~ sellers=sellers,
+                      #~ count=doc["itemcount"].value,
+                      #~ price=doc["price"].value,
+                      #~ expiry_time_in_weeks=doc["expiry"].value,
+                      #~ description=doc["description"].value)
 
 StoreSession()
 </script>
@@ -210,7 +282,8 @@ StoreSession()
 <br>
 <br>
 <br>
-<table style="color:#FFFFFF;">
+<datalist id="usernames"></datalist>
+<table style="color:#FFFFFF;" id="stocking_table">
     <tr>
         <td><b>In Stock</b><br>double click to move to checkout, press enter to select all</td>
         <td><b>Checkout</b><br>double click to remove one, press delete to remove all</td>
@@ -283,24 +356,22 @@ StoreSession()
         <td><input type="text" id="price"></td>
     </tr>
     <tr>
-        <td align="right">Limbo Sales Tax (default 5%)</td>
-        <td><input type="text" value="5.0"><div id="profits_each"></div></td>
+        <td align="right">Optional Sales Tax (in percent)</td>
+        <td><input type="text" value="5.0" id="tax"><div id="profits_each"></div></td>
+    </tr>
+    <tr>
+        <td align="right">Your Percentage of profits: <b id="your_percentage">95%</b></td>
+        <td>Your income per item: <b id="your_income"></b></td>
     </tr>
     <tr>
         <td align="right">Add additional seller to split profits?</td>
-        <td>
-        <!-- The text input uses the datalist tag to suggest autocomplete terms.
-             This is separate from browser autocomplete, which we want to specify as off. -->
-        <input type="text" id="additional_seller" list="usernames" autocomplete="off" placeholder="seller">
-        <!-- The datalist tag is populated by get_usernames_done(). For explanation on
-             the datalist tag, see http://www.w3schools.com/tags/tag_datalist.asp -->
-        <datalist id="additional_sellers"></datalist>
-        <input type="text" placeholder="percent of profits">
-        </td>
+        <td><input type="submit" value="add" id="add_seller"></td>
     </tr>
+</table>
+<table>
     <tr>
-        <td align="right"><input type="submit" value="clear"></td>
-        <td><input type="submit" value="add stock"></td>
+        <td align="right"><input type="submit" value="clear" id="clear_item"></td>
+        <td><input type="submit" value="add stock" id="add_item"></td>
     </tr>
 </table>
 <br>
