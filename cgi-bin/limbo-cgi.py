@@ -110,7 +110,7 @@ def get_all_stock():
 
 def get_sellers(itemname):
     with sql.connect(database) as connection:
-        rows = list(connection.execute("SELECT Seller FROM Sellers WHERE ItemName=?", itemname))
+        rows = list(connection.execute("SELECT Seller FROM Sellers WHERE ItemName=?", [itemname]))
     return rows
 
 def get_user_stock(username):
@@ -164,6 +164,7 @@ actions = {
     "store_info": get_store_info,
     "add_item": add_item,
     "remove_item": remove_item,
+    "get_sellers": get_sellers,
     # remove the following lines in production
     "init_test_database": initialize_test_database,
     "delete_test_database": delete_test_database,
