@@ -72,9 +72,9 @@ def initialize_test_database():
         add_user("mole", "mole@blacker.caltech.edu")
         add_user("srmole", "srmole@blacker.caltech.edu")
 
-        add_item("snapple", {"jrmole": 1.00}, 24, Decimal('1.23'), 52,
+        add_item("snapple", {"jrmole": '1.00'}, 24, '1.23', '0.00', 52,
                  'A Juicy Beverage')
-        add_item("Lorem ipsum", {"mole": 0.90}, 2, Decimal('1.55'), 24,
+        add_item("Lorem ipsum", {"mole": '0.90'}, 2, '1.55', '0.05', 24,
                  """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
     return True
 
@@ -82,7 +82,7 @@ def delete_test_database():
     import os
     os.remove(database)
 
-def add_item(itemname, sellers, count, price, expiry_time_in_weeks,
+def add_item(itemname, sellers, count, price, tax, expiry_time_in_weeks,
              description=''):
     with sql.connect(database) as connection:
         duration = datetime.timedelta(weeks=expiry_time_in_weeks)
@@ -180,7 +180,7 @@ def main():
     # in the function.
     argnames = function.__code__.co_varnames[:function.__code__.co_argcount]
     for argname in argnames:
-        arguments_to_apply[argname] = form.getfirst(argname, None)
+        arguments_to_apply[argname] = eval(form.getfirst(argname, None))
     # Print the return value
     print(function(**arguments_to_apply))
 

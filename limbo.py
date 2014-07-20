@@ -9,6 +9,9 @@ from browser import doc, alert, ajax, window
 class Keycode():
     enter = 13
     delete = 46
+    # this appears only to be the numpad '+', the other '+' is shift (16) and
+    # '=' (187):
+    plus = 107
 
 timeout = 4
 
