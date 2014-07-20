@@ -72,7 +72,7 @@ def initialize_test_database():
         add_user("mole", "mole@blacker.caltech.edu")
         add_user("srmole", "srmole@blacker.caltech.edu")
 
-        add_item("snapple", {"jrmole": '1.00'}, 24, '1.23', '0.00', 52,
+        add_item("snapple", {"jrmole": '0.50', "srmole": '0.50'}, 24, '1.23', '0.00', 52,
                  'A Juicy Beverage')
         add_item("Lorem ipsum", {"mole": '0.90'}, 2, '1.55', '0.05', 24,
                  """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
@@ -113,6 +113,17 @@ def get_sellers(itemname):
         rows = list(connection.execute("SELECT Seller FROM Sellers WHERE ItemName=?", [itemname]))
     return rows
 
+def get_all_sellers():
+    with sql.connect(database) as connection:
+        rows = list(connection.execute("SELECT ItemName, Seller FROM Sellers"))
+    sellers_by_item = {}
+    for item, seller in rows:
+        if item in sellers_by_item:
+            sellers_by_item[item].append(seller)
+        else:
+            sellers_by_item[item] = [seller]
+    return sellers_by_item
+
 def get_user_stock(username):
     rows = []
     with sql.connect(database) as connection:
@@ -147,7 +158,8 @@ def get_store_info(username):
     all_stock = get_all_stock()
     usernames = get_usernames()
     user_stock = get_user_stock(username)
-    return (userinfo, all_stock, usernames, user_stock)
+    sellers_by_item = get_all_sellers()
+    return (userinfo, all_stock, usernames, user_stock, sellers_by_item)
 
 def remove_item(itemname, count_to_remove):
     """If count_to_remove >= count, removes all."""
@@ -165,6 +177,7 @@ actions = {
     "add_item": add_item,
     "remove_item": remove_item,
     "get_sellers": get_sellers,
+    "get_all_sellers": get_all_sellers,
     # remove the following lines in production
     "init_test_database": initialize_test_database,
     "delete_test_database": delete_test_database,
