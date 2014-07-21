@@ -9,6 +9,17 @@ from browser import doc, alert, ajax, window
 class Keycode():
     enter = 13
     delete = 46
+    zero = 48
+    one = 49
+    two = 50
+    three = 51
+    four = 52
+    five = 53
+    six = 54
+    seven = 55
+    eight = 56
+    nine = 57
+    digits = (48, 49, 50, 51, 52, 53, 54, 55, 56, 57)
     # this appears only to be the numpad '+', the other '+' is shift (16) and
     # '=' (187):
     plus = 107

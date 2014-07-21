@@ -210,9 +210,21 @@ def get_item_info(itemname):
     count, price_each, stockdate, expiry, desc = rows[0]
     return count, price_each, stockdate, expiry, desc
 
-def remove_item(itemname, count_to_remove):
-    """If count_to_remove >= count, removes all."""
-    pass
+def addremove_item(itemname, count_to_add):
+    with sql.connect(database) as connection:
+        count = list(connection.execute("SELECT Count FROM Items WHERE Name=?",
+                                        (itemname,)))[0][0]
+        if (-count_to_add) > count:
+            return False
+        elif (-count_to_add) == count:
+            connection.execute("DELETE FROM Items WHERE Name=?",
+                               (itemname,))
+            connection.execute("DELETE FROM Sellers WHERE ItemName=?",
+                               (itemname,))
+        else:        
+            connection.execute("UPDATE Items SET Count=? WHERE Name=?",
+                               (count + count_to_add, itemname))
+    return True
 
 def check_expired_stock():
     pass # todo
@@ -220,7 +232,7 @@ def check_expired_stock():
 def get_user_transactions(username):
     with sql.connect(database) as connection:
         rows = list(connection.execute(
-            "SELECT * FROM Transactions WHERE Buyer=? OR Seller=?",
+            "SELECT * FROM Transactions WHERE Buyer=? OR Seller=? ORDER BY Date",
             (username, username)))
     return rows
 
@@ -231,7 +243,7 @@ actions = {
     "username": get_username,
     "store_info": get_store_info,
     "add_item": add_item,
-    "remove_item": remove_item,
+    "addremove": addremove_item,
     "get_all_sellers": get_all_sellers,
     "item_info": get_item_info,
     "checkout": checkout,
