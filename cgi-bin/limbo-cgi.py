@@ -60,7 +60,7 @@ def initialize_test_database():
                               Date       TEXT NOT NULL,
                               Buyer      TEXT,
                               Seller     TEXT,
-                              Item       INTEGER,
+                              Item       TEXT,
                               Count      INTEGER NOT NULL,
                               Price      TEXT NOT NULL,
                               StockDate  TEXT NOT NULL,
@@ -72,8 +72,8 @@ def initialize_test_database():
         add_user("mole", "mole@blacker.caltech.edu")
         add_user("srmole", "srmole@blacker.caltech.edu")
 
-        add_item("snapple", {"jrmole": '0.50', "srmole": '0.50'}, 24, '1.23', '0.00', 52,
-                 'A Juicy Beverage')
+        add_item("snapple", {"jrmole": '0.50', "srmole": '0.50'},
+                 24, '1.23', '0.00', 52, 'A Juicy Beverage')
         add_item("Lorem ipsum", {"mole": '0.90'}, 2, '1.55', '0.05', 24,
                  """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
     return True
@@ -82,12 +82,51 @@ def delete_test_database():
     import os
     os.remove(database)
 
+def checkout(itemname, buyer, count):
+    date = datetime.datetime.now()
+    fraction_by_sellers = get_fraction_by_sellers(itemname)
+    current_count, price_each, stockdate, expiry, desc = get_item_info(itemname)
+    
+    with sql.connect(database) as connection:
+        # Subtract count from the item. If count is zero, then remove the item
+        # record. If the count goes below zero, we have an error. Do not record
+        # the transaction and return False.
+        
+        if current_count < count:
+            return False
+        elif current_count == count:
+            connection.execute("DELETE FROM Items WHERE Name=?",
+                               (itemname,))
+            connection.execute("DELETE FROM Sellers WHERE ItemName=?",
+                               (itemname,))
+        else:        
+            connection.execute("UPDATE Items SET Count=? WHERE Name=?",
+                               (current_count - count, itemname))
+        
+        # Record the transaction
+        connection.execute("""INSERT INTO Transactions
+                              VALUES(?, ?, ?, ?, ?, ?, ?, ?)""",
+                           (date, buyer, str(fraction_by_sellers), itemname,
+                            count, price_each, stockdate, expiry))
+        
+        total_price = float(price_each) * count
+        
+        # Subtract money from buyer
+        connection.execute("UPDATE Users SET Balance=Balance-? WHERE Name=?",
+                           (total_price, buyer))
+        # Add money to multiple sellers
+        for seller, fraction in fraction_by_sellers.items():
+            connection.execute("UPDATE Users SET Balance=Balance+? WHERE Name=?",
+                               (total_price * fraction, seller))
+    return True
+        
+
 def add_item(itemname, sellers, count, price, tax, expiry_time_in_weeks,
              description=''):
+    duration = datetime.timedelta(weeks=expiry_time_in_weeks)
+    stockdate = datetime.datetime.now()
+    expirydate = stockdate + duration
     with sql.connect(database) as connection:
-        duration = datetime.timedelta(weeks=expiry_time_in_weeks)
-        stockdate = datetime.datetime.now()
-        expirydate = stockdate + duration
         connection.execute("INSERT INTO Items VALUES(?, ?, ?, ?, ?, ?)",
                            (itemname, count, str(price), stockdate,
                             expirydate, description))
@@ -100,18 +139,19 @@ def add_user(username, email, uid=0):
         balance = Decimal('0.00')
         joindate = datetime.datetime.now()
         connection.execute("INSERT INTO Users VALUES(?, ?, ?, ?, ?)",
-                           (username, str(email), str(balance), int(uid), joindate))
+                           (username, email, str(balance), int(uid), joindate))
     return True
 
 def get_all_stock():
     with sql.connect(database) as connection:
         rows = list(connection.execute("SELECT * FROM Items"))
     return rows
-
-def get_sellers(itemname):
+    
+def get_fraction_by_sellers(itemname):
     with sql.connect(database) as connection:
-        rows = list(connection.execute("SELECT Seller FROM Sellers WHERE ItemName=?", [itemname]))
-    return rows
+        rows = list(connection.execute(
+            "SELECT ProfitSplit, Seller FROM Sellers WHERE ItemName=?", (itemname,)))
+    return dict((seller, float(fraction)) for fraction, seller in rows)
 
 def get_all_sellers():
     with sql.connect(database) as connection:
@@ -127,8 +167,8 @@ def get_all_sellers():
 def get_user_stock(username):
     rows = []
     with sql.connect(database) as connection:
-        for row in connection.execute("SELECT ItemName FROM Sellers WHERE Seller=?",
-                                      (username,)):
+        for row in connection.execute(
+            "SELECT ItemName FROM Sellers WHERE Seller=?", (username,)):
             rows.append(row[0])
     return rows
 
@@ -161,6 +201,14 @@ def get_store_info(username):
     sellers_by_item = get_all_sellers()
     return (userinfo, all_stock, usernames, user_stock, sellers_by_item)
 
+def get_item_info(itemname):
+    with sql.connect(database) as connection:
+        rows = list(connection.execute(
+            """SELECT Count, Price, StockDate, ExpiryDate, Description
+               FROM Items WHERE Name=?""", (itemname,)))
+    count, price_each, stockdate, expiry, desc = rows[0]
+    return count, price_each, stockdate, expiry, desc
+
 def remove_item(itemname, count_to_remove):
     """If count_to_remove >= count, removes all."""
     pass
@@ -176,8 +224,9 @@ actions = {
     "store_info": get_store_info,
     "add_item": add_item,
     "remove_item": remove_item,
-    "get_sellers": get_sellers,
     "get_all_sellers": get_all_sellers,
+    "item_info": get_item_info,
+    "checkout": checkout,
     # remove the following lines in production
     "init_test_database": initialize_test_database,
     "delete_test_database": delete_test_database,
