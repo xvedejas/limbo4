@@ -199,7 +199,8 @@ def get_store_info(username):
     usernames = get_usernames()
     user_stock = get_user_stock(username)
     sellers_by_item = get_all_sellers()
-    return (userinfo, all_stock, usernames, user_stock, sellers_by_item)
+    transactions = get_user_transactions(username)
+    return userinfo, all_stock, usernames, user_stock, sellers_by_item, transactions
 
 def get_item_info(itemname):
     with sql.connect(database) as connection:
@@ -216,6 +217,13 @@ def remove_item(itemname, count_to_remove):
 def check_expired_stock():
     pass # todo
 
+def get_user_transactions(username):
+    with sql.connect(database) as connection:
+        rows = list(connection.execute(
+            "SELECT * FROM Transactions WHERE Buyer=? OR Seller=?",
+            (username, username)))
+    return rows
+
 # These are the allowed actions of cgi requests.
 actions = {
     "add_user": add_user,
@@ -227,6 +235,7 @@ actions = {
     "get_all_sellers": get_all_sellers,
     "item_info": get_item_info,
     "checkout": checkout,
+    "transactions": get_user_transactions,
     # remove the following lines in production
     "init_test_database": initialize_test_database,
     "delete_test_database": delete_test_database,
