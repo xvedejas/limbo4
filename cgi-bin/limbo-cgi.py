@@ -17,6 +17,16 @@ form = cgi.FieldStorage()
 # http://zetcode.com/db/sqlitepythontutorial/
 database = 'limbo4.db'
 
+transaction_types = [
+    'withdrawal',
+    'deposit',
+    'purchase',
+    'sell',
+    'stock',
+    'unstock',
+    'anonymous_donation',
+]
+
 def decimal_round(d):
     d.quantize(Decimal('.01'), rounding=decimal.ROUND_DOWN)
 
@@ -56,6 +66,9 @@ def initialize_test_database():
         # the "item" field is NULL. For a withdrawal, the Seller and Item fields
         # are NULL. For a deposit, the Buyer and Item fields are NULL.
         # If there were multiple sellers, then use multiple rows.
+        
+        
+        
         connection.execute("""CREATE TABLE Transactions(
                               Date       TEXT NOT NULL,
                               Buyer      TEXT,

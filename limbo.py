@@ -29,19 +29,13 @@ timeout = 4
 def timeout_error():
     notify("Server didn't reply after %s seconds" % limbo.timeout)
 
-# We want to make sure that there is a field with id "result" which we can put
-# error text in (or possibly other notifications)
-try:
-    doc["result"]
-    def notify(text):
-        doc["result"].html = text
-except:
-    def notify(text):
-        print("Notifications won't work")
+def notify(text):
+    alert(text)
 
 def request(async, on_complete=None, **kwargs):
     """All calls go to cgi-bin/limbo.py; exactly what is done depends on the
        arguments passed. """
+    print(kwargs)
     req = ajax.ajax()
     def callback(req):
         on_complete(eval(req.text))
