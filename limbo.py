@@ -35,7 +35,6 @@ def notify(text):
 def request(async, on_complete=None, **kwargs):
     """All calls go to cgi-bin/limbo.py; exactly what is done depends on the
        arguments passed. """
-    print(kwargs)
     req = ajax.ajax()
     def callback(req):
         on_complete(eval(req.text))

@@ -4,59 +4,19 @@
 </head>
 <body onload="brython(1)">
 <div style="background-color:#000000;width:1200px;margin:0 auto;color:#FFFFFF;">
-<script type="text/python">
-from browser import doc, alert
-from limbo import async_request, notify, Keycode, redirect
-
-def login_event(ev):
-    """This is called when the login button is pressed."""
-    login(doc["username"].value)
-
-def keydown_event(ev):
-    """This is called when a key is pressed while the username box is in focus."""
-    if ev.keyCode == Keycode.enter:
-        login_event(ev)
-
-def get_usernames_done(usernames):
-    doc["usernames"].html = ''.join('<option value="%s">' % user for user in usernames)
-
-def login(username):
-    """This is called when the login button is pressed."""
-    async_request(login_done, action="username", username=repr(username))
-
-def login_done(data):
-    if not data:
-        # Todo: have a user creation page
-        redirect("create_account.html", username=repr(doc["username"].value))
-    else:
-        username, email, balance, uid, signup_date = data
-        redirect("store.html", username=repr(username))
-
-def create_database_event(ev):
-    async_request(action="init_test_database")
-
-def delete_database_event(ev):
-    async_request(action="delete_test_database")
-
-# Populate the variable "usernames". Todo: have a timeout to reload this.
-async_request(get_usernames_done, action="usernames")
-
-doc['username'].bind('keydown', keydown_event)
-doc['login_button'].bind('click', login_event)
-doc['create_database_button'].bind('click', create_database_event)
-doc['delete_database_button'].bind('click', delete_database_event)
-
-</script>
+<script type="text/python" src="index.py"></script>
 
 <center>
 <a href="index.html"><img src="../images/limbo4.png" /></a>
 <br />
 <br />
-<br />
 <div style="width:420px;text-align:left;">
 Limbo4 is an honor code store. You are trusted to pay according to the listed
 price of any items you take from this store. Please record <u>all</u>
-transactions. <a href="info.html">More Info</a></div>
+transactions. <a href="info.html">More Info</a>
+<br /><br />
+Report any bugs to <i>mole-imss@ugcs.caltech.edu</i>
+</div>
 <br />
 <br />
 <!-- The text input uses the datalist tag to suggest autocomplete terms.
@@ -80,11 +40,10 @@ transactions. <a href="info.html">More Info</a></div>
 <br />
 <br /><br /><br /><br />
 <!-- Delete the following in production -->
-Testing functions:
+Testing functions (to be removed in production):
 <br />
 <br />
-<input type="submit" value="Create Test Database" id="create_database_button"></input>
-<input type="submit" value="Delete Test Database" id="delete_database_button"></input>
+<input type="submit" value="Delete and Rebuild Test Database" id="delete_database_button"></input>
 <br /><br /><br /><br />
 </center>
 
