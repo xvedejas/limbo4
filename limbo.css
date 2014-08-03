@@ -1,0 +1,9 @@
+@font-face
+{
+    font-family: limbo;
+    src: url('limbo.ttf');
+} 
+
+h2 { font-family: limbo; }
+a:link { color: #00FFFF; }
+a:visited { color: #00AAAA; }

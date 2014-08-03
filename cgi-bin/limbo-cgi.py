@@ -5,12 +5,12 @@
 print("Content-Type:text/html\n\n")
 
 import cgi, cgitb
+cgitb.enable()
 import sqlite3 as sql
 import decimal
 from decimal import Decimal
 decimal.getcontext().prec = 6
 import datetime
-cgitb.enable()
 
 # There's a decent sqlite tutorial here:
 # http://zetcode.com/db/sqlitepythontutorial/
