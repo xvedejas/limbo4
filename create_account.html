@@ -1,0 +1,56 @@
+<html>
+<head>
+<script src="brython.js"></script>
+<link rel="stylesheet" type="text/css" href="limbo.css">
+</head>
+<body onload="brython(1)" style="background-color:#000000;width:1200px;margin:0 auto;color:#FFFFFF;">
+<script type="text/python">
+from browser import doc, alert
+from limbo import async_request, notify, Keycode, redirect
+
+def create_account_event(ev):
+    user = doc["username"].value
+    email = doc["email"].value
+    uid = doc["uid"].value
+    # Do some basic validation:
+    if '@' not in email or '.' not in email:
+        notify("Invalid email address")
+    elif not uid:
+        notify("UID must be an integer")
+    elif not len(uid) == 7:
+        notify("UID must be 7 digits long")
+    else:
+        try:
+            async_request(create_account_done,
+                          action="add_user",
+                          username=repr(user),
+                          email=repr(email),
+                          uid=uid)
+        except:
+            notify("UID must be an integer")
+
+def create_account_done(result):
+    if not result:
+        notify("Unknown Error")
+    else:
+        redirect("index.html")
+
+username = eval(doc.query.getfirst("username", ""))
+doc['username'].value = username
+doc['create_account_button'].bind('click', create_account_event)
+</script>
+
+<center>
+<a href="index.html"><img src="../images/limbo4.png" /></a>
+<br />
+<br />
+<h2>Create an Account</h2>
+<input type="text" placeholder="username" id="username"></input><br />
+<input type="text" placeholder="email" id="email"></input><br />
+<input type="text" placeholder="caltech UID" id="uid"></input><br />
+<input type="submit" value="Create Account" id="create_account_button"></input>
+<br /><br /><br /><br />
+</center>
+
+</body>
+</html>
