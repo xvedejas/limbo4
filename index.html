@@ -4,7 +4,12 @@
 </head>
 <body onload="brython(1)" style="background-color:#000000;width:1200px;margin:0 auto;color:#FFFFFF;">
 <script type="text/python" src="index.py"></script>
-
+<style>
+@font-face { font-family: limbo; src: url('limbo.ttf'); } 
+h2 { font-family: limbo; }
+a:link { color: #00FFFF; }
+a:visited { color: #00AAAA; }
+</style>
 <center>
 <a href="index.html"><img src="../images/limbo4.png" /></a>
 <br />
@@ -13,11 +18,9 @@
 Limbo4 is an honor code store. You are trusted to pay according to the listed
 price of any items you take from this store. Please record <u>all</u>
 transactions. <a href="info.html">More Info</a>
-<br /><br />
-Report any bugs to <i>mole-imss@ugcs.caltech.edu</i>
 </div>
 <br />
-<br />
+<h2>Login</h2>
 <!-- The text input uses the datalist tag to suggest autocomplete terms.
      This is separate from browser autocomplete, which we want to specify as off. -->
 <input type="text" id="username" name="username" list="usernames" autocomplete="off" placeholder="Who are you?" autofocus></input>
@@ -27,22 +30,30 @@ Report any bugs to <i>mole-imss@ugcs.caltech.edu</i>
 <input type="submit" value="Login/Register" id="login_button"></input>
 <br />
 <br />
-<!-- This next part gets filled if there's an error/notification -->
-<b><div id="result" style="color:#000000;font-size:20px;background-color:#00FFFF;"></div></b>
 <br />
-<input type="submit" value="See Limbo Statistics (todo)" id="stats_button"></input>
-<br />
+<h2>Donate</h2>
+<div style="width:420px;text-align:left;">If you want to donate cash to limbo, put it in the bucket and submit the amount here:</div>
 <br />
 <input type="text" id="donation" placeholder="Donation (USD amount) (todo)" autofocus></input>
 <input type="submit" value="I Donated Cash" id="donate_button"></input>
+<h2>Other</h2>
+<a href="">Limbo Statistics (todo)</a>
+<br><a href="">Wall of Shame (todo)</a>
+<br><a href="">All Transactions (todo)</a>
+<br />
+<br />
+<br />
+<br /><br />
+Report any bugs to <i>mole-imss@ugcs.caltech.edu</i>
+<br />
 <br />
 <br />
 <br /><br /><br /><br />
 <!-- Delete the following in production -->
-Testing functions (to be removed in production):
+<!--Testing functions (to be removed in production):
 <br />
 <br />
-<input type="submit" value="Delete and Rebuild Test Database" id="delete_database_button"></input>
+<input type="submit" value="Delete and Rebuild Test Database" id="delete_database_button"></input> -->
 <br /><br /><br /><br />
 </center>
 

@@ -55,4 +55,3 @@ def redirect(url, **kwargs):
     window.location.href = (url + '?' +
         '&'.join('%s=%s' % (key, value) for key, value in kwargs.items()))
 
-# The below gets called on import.

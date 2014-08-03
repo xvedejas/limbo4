@@ -7,24 +7,23 @@ print("Content-Type:text/html\n\n")
 import cgi, cgitb
 import sqlite3 as sql
 import decimal
-from enum import Enum
 from decimal import Decimal
 decimal.getcontext().prec = 6
 import datetime
 cgitb.enable()
-form = cgi.FieldStorage()
 
 # There's a decent sqlite tutorial here:
 # http://zetcode.com/db/sqlitepythontutorial/
-database = 'limbo4.db'
+sql_database = 'limbo4.db'
 
-def decimal_round(d):
-    d.quantize(Decimal('.01'), rounding=decimal.ROUND_DOWN)
+def decimal_round(dec):
+    """Take a decimal value and round down to the nearest cent."""
+    dec.quantize(Decimal('.01'), rounding=decimal.ROUND_DOWN)
 
 def initialize_test_database():
     """This function should only be called on an empty new database. This
        function should also be where you create fake users/items for testing."""
-    with sql.connect(database) as connection:
+    with sql.connect(sql_database) as connection:
         # Some notes on data storage:
         # Balance/Price are python decimal amounts, so they are stored as their
         # text representation.
@@ -42,6 +41,7 @@ def initialize_test_database():
                               Name         TEXT PRIMARY KEY NOT NULL,
                               Count        INTEGER NOT NULL,
                               Price        TEXT NOT NULL,
+                              Tax          TEXT NOT NULL,
                               StockDate    TEXT NOT NULL,
                               ExpiryDate   TEXT NOT NULL,
                               Description  TEXT)""")
@@ -108,7 +108,7 @@ def initialize_test_database():
                               PriceEach    TEXT NOT NULL,
                               Count        INTEGER NOT NULL,
                               Tax          TEXT NOT NULL)""")
-        
+
         # Now we will populate the Users and Items tables with some fake users
         # and items.
         add_user("jrmole", "jrmole@blacker.caltech.edu")
@@ -123,17 +123,22 @@ def initialize_test_database():
     return True
 
 def delete_test_database():
+    """Delete the database. Be careful! Also rebuilds the database."""
     import os
-    os.remove(database)
+    os.remove(sql_database)
     return initialize_test_database()
 
 def checkout(itemname, buyer, count):
+    """Buyer checkouts any amount of a single item."""
     date = datetime.datetime.now()
     profit_split_by_sellers = get_fraction_by_sellers(itemname)
-    current_count, price_each, stockdate, expiry, desc = get_item_info(itemname)
+    current_count, price_each, stockdate, expiry, _ = get_item_info(itemname)
     total_price = float(price_each) * count
-    
-    with sql.connect(database) as connection:
+
+    with sql.connect(sql_database) as connection:
+        tax = list(connection.execute("SELECT Tax FROM Items WHERE Name=?",
+                                      (itemname,)))[0]
+
         # Subtract count from the item. If count is zero, then remove the item
         # record. If the count goes below zero, we have an error. Do not record
         # the transaction and return False.
@@ -144,34 +149,38 @@ def checkout(itemname, buyer, count):
                                (itemname,))
             connection.execute("DELETE FROM Sellers WHERE ItemName=?",
                                (itemname,))
-        else:        
+        else:
             connection.execute("UPDATE Items SET Count=? WHERE Name=?",
                                (current_count - count, itemname))
-        
+
         # Subtract money from buyer
         connection.execute("UPDATE Users SET Balance=Balance-? WHERE Name=?",
                            (total_price, buyer))
-        
+
         # Record the transaction
-        for profit_split, seller in profit_split_by_sellers.items():
+        for seller, profit_split in profit_split_by_sellers.items():
             connection.execute("INSERT INTO Purchases "
-                           "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                           (itemname, date, stockdate, expiry, buyer, seller,
-                           profit_split, price_each, count, tax))
+                               "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                               (itemname, date, stockdate, expiry, buyer,
+                                seller, profit_split, price_each, count,
+                                str(tax)))
             # Add money to seller
             connection.execute("UPDATE Users SET Balance=Balance+? "
-                               "WHERE Name=?", (total_price * fraction, seller))
+                               "WHERE Name=?",
+                               (total_price * float(profit_split), seller))
     return True
-        
 
-def add_item(itemname, sellers, count, priceEach, tax, expiry_time_in_weeks,
+
+def add_item(itemname, sellers, count, price_each, tax, expiry_time_in_weeks,
              description=''):
+    """Adds an item as being in-stock and stocked by certain sellers.
+       Returns True if successful."""
     duration = datetime.timedelta(weeks=expiry_time_in_weeks)
     stockdate = datetime.datetime.now()
     expirydate = stockdate + duration
-    with sql.connect(database) as connection:
-        connection.execute("INSERT INTO Items VALUES(?, ?, ?, ?, ?, ?)",
-                           (itemname, count, str(priceEach), stockdate,
+    with sql.connect(sql_database) as connection:
+        connection.execute("INSERT INTO Items VALUES(?, ?, ?, ?, ?, ?, ?)",
+                           (itemname, count, price_each, tax, stockdate,
                             expirydate, description))
         for seller, profit_split in sellers.items():
             connection.execute("INSERT INTO Sellers VALUES(?, ?, ?)",
@@ -179,11 +188,14 @@ def add_item(itemname, sellers, count, priceEach, tax, expiry_time_in_weeks,
             connection.execute("INSERT INTO Stocking "
                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                (itemname, stockdate, stockdate, expirydate,
-                                seller, profit_split, str(priceEach), 0,
+                                seller, profit_split, str(price_each), 0,
                                 count, tax))
+    return True
 
 def add_user(username, email, uid=0):
-    with sql.connect(database) as connection:
+    """Creates a new user and inserts into the database.
+       Returns True if successful"""
+    with sql.connect(sql_database) as connection:
         balance = Decimal('0.00')
         joindate = datetime.datetime.now()
         connection.execute("INSERT INTO Users VALUES(?, ?, ?, ?, ?)",
@@ -191,18 +203,22 @@ def add_user(username, email, uid=0):
     return True
 
 def get_all_stock():
-    with sql.connect(database) as connection:
+    """Returns all items stocked and all the associated data."""
+    with sql.connect(sql_database) as connection:
         rows = list(connection.execute("SELECT * FROM Items"))
     return rows
-    
+
 def get_fraction_by_sellers(itemname):
-    with sql.connect(database) as connection:
-        rows = list(connection.execute(
-            "SELECT ProfitSplit, Seller FROM Sellers WHERE ItemName=?", (itemname,)))
+    """Returns a dictionary with sellers as keys, profit fractions as values."""
+    with sql.connect(sql_database) as connection:
+        rows = list(connection.execute("SELECT ProfitSplit, Seller "
+                                       "FROM Sellers WHERE ItemName=?",
+                                       (itemname,)))
     return dict((seller, float(fraction)) for fraction, seller in rows)
 
 def get_all_sellers():
-    with sql.connect(database) as connection:
+    """Returns a dictionary with item names as keys, seller lists as values."""
+    with sql.connect(sql_database) as connection:
         rows = list(connection.execute("SELECT ItemName, Seller FROM Sellers"))
     sellers_by_item = {}
     for item, seller in rows:
@@ -213,22 +229,25 @@ def get_all_sellers():
     return sellers_by_item
 
 def get_user_stock(username):
+    """Returns all item names which list the given username as a seller."""
     rows = []
-    with sql.connect(database) as connection:
-        for row in connection.execute(
-            "SELECT ItemName FROM Sellers WHERE Seller=?", (username,)):
+    with sql.connect(sql_database) as connection:
+        for row in connection.execute("SELECT ItemName FROM Sellers "
+                                      "WHERE Seller=?", (username,)):
             rows.append(row[0])
     return rows
 
 def get_usernames():
+    """Returns a list of all usernames."""
     names = []
-    with sql.connect(database) as connection:
+    with sql.connect(sql_database) as connection:
         for row in connection.execute("SELECT Name FROM Users"):
             names.append(row[0])
     return names
 
 def get_username(username):
-    with sql.connect(database) as connection:
+    """Returns the information on a username if it exists, otherwise False."""
+    with sql.connect(sql_database) as connection:
         rows = list(connection.execute("SELECT * FROM Users WHERE Name=?",
                                        (username,)))
     if rows:
@@ -248,10 +267,12 @@ def get_store_info(username):
     user_stock = get_user_stock(username)
     sellers_by_item = get_all_sellers()
     transactions = get_user_transactions(username)
-    return userinfo, all_stock, usernames, user_stock, sellers_by_item, transactions
+    return (userinfo, all_stock, usernames, user_stock,
+            sellers_by_item, transactions)
 
 def get_item_info(itemname):
-    with sql.connect(database) as connection:
+    """Returns count, price, stock date, expiry date, description of an item."""
+    with sql.connect(sql_database) as connection:
         rows = list(connection.execute("SELECT Count, Price, StockDate, "
                                        "ExpiryDate, Description FROM Items "
                                        "WHERE Name=?", (itemname,)))
@@ -259,34 +280,53 @@ def get_item_info(itemname):
     return count, price_each, stockdate, expiry, desc
 
 def addremove_item(itemname, count_to_add):
-    with sql.connect(database) as connection:
-        count = list(connection.execute("SELECT Count FROM Items WHERE Name=?",
-                                        (itemname,)))[0][0]
+    """Modifies stock by altering item count only. Returns True if
+       successful."""
+    date = datetime.datetime.now()
+    with sql.connect(sql_database) as connection:
+        _, count, price, tax, stockdate, expirydate, _ = list(
+            connection.execute("SELECT * FROM Items WHERE Name=?",
+                               (itemname,)))[0]
+
         if (-count_to_add) > count:
             return False
-        elif (-count_to_add) == count:
-            connection.execute("DELETE FROM Items WHERE Name=?",
-                               (itemname,))
+        if (-count_to_add) == count:
             connection.execute("DELETE FROM Sellers WHERE ItemName=?",
                                (itemname,))
-        else:        
+            connection.execute("DELETE FROM Items WHERE Name=?",
+                               (itemname,))
+        else:
             connection.execute("UPDATE Items SET Count=? WHERE Name=?",
                                (count + count_to_add, itemname))
-        # Record this stock change
-        
+
+        profit_splits_by_seller = dict(
+            connection.execute("SELECT Seller, ProfitSplit FROM Sellers "
+                               "WHERE ItemName=?", (itemname,)))
+
+        for seller, profit_split in profit_splits_by_seller.items():
+            # Record this stock change
+            connection.execute("INSERT INTO Stocking "
+                               "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                               (itemname, date, stockdate, expirydate,
+                                seller, profit_split, price, count,
+                                count + count_to_add, tax))
     return True
 
 def check_expired_stock():
+    """Removes all stock which has expired and records this."""
     pass # todo
 
 def get_user_transactions(username):
-    with sql.connect(database) as connection:
+    """Returns all transactions associated with a username."""
+    with sql.connect(sql_database) as connection:
         purchases = list(connection.execute("SELECT * FROM Purchases "
-                                        "WHERE Buyer=? OR Seller=? "
-                                        "ORDER BY Date", (username, username)))
+                                            "WHERE Buyer=? OR Seller=? "
+                                            "ORDER BY Date",
+                                            (username, username)))
         transfers = list(connection.execute("SELECT * FROM Transfers "
-                                         "WHERE Sender=? OR Receiver=? "
-                                         "ORDER BY Date", (username, username)))
+                                            "WHERE Sender=? OR Receiver=? "
+                                            "ORDER BY Date",
+                                            (username, username)))
         balance = list(connection.execute("SELECT * FROM BalanceChanges "
                                           "WHERE User=? "
                                           "ORDER BY Date", (username,)))
@@ -299,8 +339,11 @@ def get_user_transactions(username):
     return purchases, transfers, balance, stock, expiry
 
 def transfer_funds(sender, receiver, amount):
+    """Transfers any nonzero amount of funds from one user to another.
+       Returns True if successful."""
+    assert amount > 0
     date = datetime.datetime.now()
-    with sql.connect(database) as connection:
+    with sql.connect(sql_database) as connection:
         connection.execute("UPDATE Users SET Balance=Balance-? WHERE Name=?",
                            (amount, sender))
         connection.execute("UPDATE Users SET Balance=Balance+? WHERE Name=?",
@@ -309,24 +352,34 @@ def transfer_funds(sender, receiver, amount):
                            (date, sender, receiver, amount))
     return True
 
-# These are the allowed actions of cgi requests.
-actions = {
-    "add_user": add_user,
-    "usernames": get_usernames,
-    "username": get_username,
-    "store_info": get_store_info,
-    "add_item": add_item,
-    "addremove": addremove_item,
-    "get_all_sellers": get_all_sellers,
-    "item_info": get_item_info,
-    "checkout": checkout,
-    "transactions": get_user_transactions,
-    "transfer": transfer_funds,
-    # remove the following lines in production
-    "delete_test_database": delete_test_database,
-}
+def donate(amount):
+    """Records an anonymous donation of cash. Returns True if successful."""
+    assert amount > 0
+    date = datetime.datetime.now()
+    with sql.connect(sql_database) as connection:
+        connection.execute("INSERT INTO Donations VALUES(?, ?)", (date, amount))
+    return True
 
 def main():
+    # These are the allowed actions of cgi requests.
+    actions = {
+        "add_user": add_user,
+        "usernames": get_usernames,
+        "username": get_username,
+        "store_info": get_store_info,
+        "add_item": add_item,
+        "addremove": addremove_item,
+        "get_all_sellers": get_all_sellers,
+        "item_info": get_item_info,
+        "checkout": checkout,
+        "transactions": get_user_transactions,
+        "transfer": transfer_funds,
+        "donate": donate,
+        # remove the following lines in production
+        "delete_test_database": delete_test_database,
+    }
+
+    form = cgi.FieldStorage()
     action = form.getfirst("action", "")
     # If no valid action is provided, don't do anything.
     if action not in actions:

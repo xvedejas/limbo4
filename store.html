@@ -4,20 +4,26 @@
 </head>
 <body onload="brython(1)" style="background-color:#000000;width:1200px;margin:0 auto;color:#FFFFFF;">
 <script type="text/python" src="store.py"></script>
-
+<style>
+@font-face { font-family: limbo; src: url('limbo.ttf'); } 
+h2 { font-family: limbo; }
+a:link { color: #00FFFF; }
+a:visited { color: #00AAAA; }
+</style>
 <center>
 <a href="index.html"><img src="../images/limbo4.png" /></a>
 <div id="welcome" style="font-size:20px;color:#00FFFF;"></div>
 <br>
 <br>
-<br>
-<br>
-<br>
 <datalist id="usernames"></datalist>
 <table style="color:#FFFFFF;" id="stocking_table">
     <tr>
-        <td><b>In Stock</b><br>double click to move to checkout, press enter to select all</td>
-        <td><b>Checkout</b><br>double click to remove one, press delete to remove all</td>
+        <td><h2>In Stock</h2></td>
+        <td><h2>Checkout</h2></td>
+    </tr>
+    <tr>
+        <td>double click to move to checkout, press enter to select all</td>
+        <td>double click to remove one, press delete to remove all</td>
     </tr>
     <tr>
         <td><input type="text" id="search" autofocus placeholder="Search"></td>
@@ -51,13 +57,18 @@
     </tr>
     <tr>
         <td style="width:500;">
-            <b>My Inventory</b>
-            <br>Double click to remove one, delete to remove all
+            <h2>My Inventory</h2>
+        </td>
+        <td><h2>My Transactions History</h2></td>
+    </tr>
+    <tr>
+        <td style="width:500;">
+            Double click to remove one, delete to remove all
             <br>Press any single-digit number to add that amount
             <br>Keep in mind that to set a different expiry time,
                 you must create a new item.
         </td>
-        <td><b>My Transactions History</b></td>
+        <td></td>
     </tr>
     <tr>
         <td><select size=10 style="width:500;height:200;" id="inventory"></td>
@@ -73,7 +84,7 @@
         <td></td>
     </tr>
     <tr>
-        <td><b>Add Stock to Limbo:</b></td>
+        <td><h2>Add Stock to Limbo:</h2></td>
         <td></td>
     </tr>
     <tr>
@@ -120,6 +131,7 @@
 <br>
 <br>
 <br>
+<h2>A service of <a href="http://blacker.caltech.edu/">Blacker Hovse</a></h2>
 </center>
 
 </body>
