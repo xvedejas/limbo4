@@ -89,7 +89,8 @@ def initialize_test_database():
                               Seller       TEXT NOT NULL,
                               ProfitSplit  TEXT NOT NULL,
                               PriceEach    TEXT NOT NULL,
-                              Count        INTEGER NOT NULL,
+                              OldCount     INTEGER NOT NULL,
+                              NewCount     INTEGER NOT NULL,
                               Tax          TEXT NOT NULL)""")
         #   Anonymous Donations of cash
         connection.execute("""CREATE TABLE Donations(
@@ -176,10 +177,10 @@ def add_item(itemname, sellers, count, priceEach, tax, expiry_time_in_weeks,
             connection.execute("INSERT INTO Sellers VALUES(?, ?, ?)",
                                (itemname, seller, profit_split))
             connection.execute("INSERT INTO Stocking "
-                               "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                               "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                (itemname, stockdate, stockdate, expirydate,
-                                seller, profit_split, str(priceEach), count,
-                                tax))
+                                seller, profit_split, str(priceEach), 0,
+                                count, tax))
 
 def add_user(username, email, uid=0):
     with sql.connect(database) as connection:
@@ -271,6 +272,8 @@ def addremove_item(itemname, count_to_add):
         else:        
             connection.execute("UPDATE Items SET Count=? WHERE Name=?",
                                (count + count_to_add, itemname))
+        # Record this stock change
+        
     return True
 
 def check_expired_stock():
@@ -295,6 +298,17 @@ def get_user_transactions(username):
                                          "ORDER BY Date", (username,)))
     return purchases, transfers, balance, stock, expiry
 
+def transfer_funds(sender, receiver, amount):
+    date = datetime.datetime.now()
+    with sql.connect(database) as connection:
+        connection.execute("UPDATE Users SET Balance=Balance-? WHERE Name=?",
+                           (amount, sender))
+        connection.execute("UPDATE Users SET Balance=Balance+? WHERE Name=?",
+                           (amount, receiver))
+        connection.execute("INSERT INTO Transfers VALUES(?, ?, ?, ?)",
+                           (date, sender, receiver, amount))
+    return True
+
 # These are the allowed actions of cgi requests.
 actions = {
     "add_user": add_user,
@@ -307,6 +321,7 @@ actions = {
     "item_info": get_item_info,
     "checkout": checkout,
     "transactions": get_user_transactions,
+    "transfer": transfer_funds,
     # remove the following lines in production
     "delete_test_database": delete_test_database,
 }
