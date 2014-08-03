@@ -98,29 +98,29 @@ class StoreSession():
                 price_each, count, tax = purchase
             entry = ("<option>{0}: {1}x {2} at ${3} each; "
                      "{4} sold to {5}.</option>")
-            entries.append(entry.format(date, count, item,
+            entries.append(entry.format(date[:19], count, item,
                                         price_each, seller, buyer))
 
         for transfer in transfers:
             date, sender, receiver, amount = transfer
             entry = "<option>{0}: transfer ${1} from {2} to {3}</option>"
-            entries.append(entry.format(date, amount, sender, receiver))
+            entries.append(entry.format(date[:19], amount, sender, receiver))
 
         for balance in balances:
             date, user, amount = balance
             if amount > 0:
                 entry = "<option>{0}: deposited ${1}</option>"
-                entries.append(entry.format(date, amount))
+                entries.append(entry.format(date[:19], amount))
             else:
                 entry = "<option>{0}: withdrew ${1}</option>"
-                entries.append(entry.format(date, -amount))
+                entries.append(entry.format(date[:19], -amount))
 
         for stock in stocks:
             item, date, stockdate, expirydate, seller, profit_split, \
                 price_each, oldcount, newcount, tax = stock
             entry = ("<option>{0}: change stock from {1} to "
                      "{2}x {3} (${4} each)</option>")
-            entries.append(entry.format(date, oldcount, newcount,
+            entries.append(entry.format(date[:19], oldcount, newcount,
                                         item, price_each))
 
         doc["transactions"].html = ''.join(entries)
@@ -149,16 +149,21 @@ class StoreSession():
 
     def checkout_submit_event(self, ev):
         """The user has clicked the checkout submit button. Send an async
-           request for each item. TODO: it might be better to just send one
-           request which encodes for each item."""
+           request for each item."""
+        ## TODO: it might be better to just send one request. As it stands, it
+        ##       might be possible for the transaction to fail halfway through
+        ##       and be partially successful (which is bad).
         for child in doc['checkout']:
             item = child.id
             count = child.count
-            async_request(self.done_checkout,
-                          action="checkout",
+            async_request(action="checkout",
                           itemname=repr(item),
                           buyer=repr(self.username),
                           count=count)
+        async_request(self.done_checkout,
+                      action="balance",
+                      username=repr(self.username),
+                      amount=doc['payment'].value)
 
     def clear_to_addremove_event(self, ev):
         """Clears the inventory stock amount modifications."""
@@ -167,7 +172,6 @@ class StoreSession():
 
     def confirm_addremove_event(self, ev):
         """Confirms changes in inventory."""
-        any_changes = False
         for child in doc['inventory']:
             item = child.id
             to_add = self.to_add[item]
@@ -176,9 +180,6 @@ class StoreSession():
                               action="addremove",
                               itemname=repr(item),
                               count_to_add=to_add)
-                any_changes = True
-        if any_changes:
-            redirect("store.html", username=repr(self.username))
 
     def done_checkout(self, res):
         if res:
@@ -358,7 +359,7 @@ class StoreSession():
         total += float(doc["tax"].value)
         percent = 100.0 - total
         listed_price_each = float(doc["price"].value)
-        doc["your_percentage"].html = str(percent) + '%'Delete key or plus key on our personal stock
+        doc["your_percentage"].html = str(percent) + '%'
         doc["your_income"].html = '$%.2f' % (percent * 0.01 * listed_price_each)
 
     def stock_item_done(self, res):
@@ -367,34 +368,34 @@ class StoreSession():
 
     def stock_event(self, ev):
         """Validate the form for stocking items and then stock the item."""
+        if not doc["itemcount"].value:
+            notify("Count must be an integer")
+            return
         try:
-            if not doc["itemcount"].value:
-                notify("Count must be an integer")
-                return
             count = int(doc["itemcount"].value)
         except ValueError:
             notify("Count must be an integer")
             return
-        try:
-            if not doc["expiry"].value:
-                expiry = 52
-            else:
+        if not doc["expiry"].value:
+            expiry = 52
+        else:
+            try:
                 expiry = int(doc["expiry"].value)
-        except ValueError:
-            notify("Weeks until expiry must be an integer")
+            except ValueError:
+                notify("Weeks until expiry must be an integer")
+                return
+        if not doc["price"].value:
+            notify("Invalid price")
             return
         try:
-            if not doc["price"].value:
-                notify("Invalid price")
-                return
             price = "%.2f" % float(doc["price"].value)
         except ValueError:
             notify("Invalid price")
             return
+        if not doc["tax"].value:
+            notify("Invalid tax")
+            return
         try:
-            if not doc["tax"].value:
-                notify("Invalid tax")
-                return
             tax = float(doc["tax"].value) * 0.01
         except ValueError:
             notify("Invalid tax percentage")
@@ -410,7 +411,7 @@ class StoreSession():
         if len(name) < 4:
             notify("Please input a name at least 4 characters long.")
             return
-        description = doc["description"].text
+        description = doc["desc_text_area"].value
         if len(description) < 5:
             notify("Please add a useful description! "
                    "It will help people buy your stuff.")
@@ -436,7 +437,7 @@ class StoreSession():
 
         async_request(self.stock_item_done, action="add_item",
                       itemname=repr(name), sellers=sellers, count=count,
-                      price=price, tax=tax, expiry_time_in_weeks=expiry,
+                      price_each=price, tax=tax, expiry_time_in_weeks=expiry,
                       description=repr(description))
 
 StoreSession()

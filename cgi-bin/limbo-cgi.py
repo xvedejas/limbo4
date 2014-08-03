@@ -360,6 +360,29 @@ def donate(amount):
         connection.execute("INSERT INTO Donations VALUES(?, ?)", (date, amount))
     return True
 
+def get_total_cash():
+    """The expected amount of cash in Limbo is the sum of all user balances
+       and all donations."""
+    with sql.connect(sql_database) as connection:
+        balances = list(connection.execute("SELECT Balance FROM Users"))
+        total = sum(Decimal(balance[0]) for balance in balances)
+        donations = list(connection.execute("SELECT Amount FROM Donations"))
+        total_donations = sum(Decimal(donation[0]) for donation in donations)
+        return total + total_donations
+
+def change_balance(username, amount):
+    """Deposit or withdraw some amount."""
+    date = datetime.datetime.now()
+    with sql.connect(sql_database) as connection:
+        if amount == 0:
+            return True
+        else:
+            connection.execute("UPDATE Users SET Balance=Balance+? "
+                               "WHERE Name=?", (amount, username))
+        connection.execute("INSERT INTO BalanceChanges VALUES(?, ?, ?)",
+                           (date, username, amount))
+    return True
+
 def main():
     # These are the allowed actions of cgi requests.
     actions = {
@@ -375,6 +398,8 @@ def main():
         "transactions": get_user_transactions,
         "transfer": transfer_funds,
         "donate": donate,
+        "cash": get_total_cash,
+        "balance": change_balance,
         # remove the following lines in production
         "delete_test_database": delete_test_database,
     }
