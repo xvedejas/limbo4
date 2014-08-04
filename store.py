@@ -134,9 +134,12 @@ class StoreSession():
             if not amount:
                 notify("Amount must be an integer")
                 return
-            count = int(amount)
+            amount = int(amount)
         except ValueError:
             notify("Amount must be an integer")
+            return
+        if amount < 0:
+            notify("Amount must be non-zero")
             return
         if target not in self.usernames:
             notify("Invalid username")
