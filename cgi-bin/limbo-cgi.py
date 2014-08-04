@@ -290,6 +290,11 @@ def addremove_item(itemname, count_to_add):
 
         if (-count_to_add) > count:
             return False
+
+        profit_splits_by_seller = dict(
+            connection.execute("SELECT Seller, ProfitSplit FROM Sellers "
+                               "WHERE ItemName=?", (itemname,)))
+
         if (-count_to_add) == count:
             connection.execute("DELETE FROM Sellers WHERE ItemName=?",
                                (itemname,))
@@ -298,10 +303,6 @@ def addremove_item(itemname, count_to_add):
         else:
             connection.execute("UPDATE Items SET Count=? WHERE Name=?",
                                (count + count_to_add, itemname))
-
-        profit_splits_by_seller = dict(
-            connection.execute("SELECT Seller, ProfitSplit FROM Sellers "
-                               "WHERE ItemName=?", (itemname,)))
 
         for seller, profit_split in profit_splits_by_seller.items():
             # Record this stock change
