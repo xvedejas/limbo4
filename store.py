@@ -1,4 +1,4 @@
-from browser import doc, alert, html
+from browser import doc, html
 from limbo import async_request, sync_request, notify, redirect, Keycode
 
 class Item():
@@ -108,12 +108,12 @@ class StoreSession():
 
         for balance in balances:
             date, user, amount = balance
-            if amount > 0:
+            if float(amount) > 0:
                 entry = "<option>{0}: deposited ${1}</option>"
                 entries.append(entry.format(date[:19], amount))
             else:
                 entry = "<option>{0}: withdrew ${1}</option>"
-                entries.append(entry.format(date[:19], -amount))
+                entries.append(entry.format(date[:19], -float(amount)))
 
         for stock in stocks:
             item, date, stockdate, expirydate, seller, profit_split, \
