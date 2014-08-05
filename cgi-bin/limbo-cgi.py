@@ -7,18 +7,28 @@ print("Content-Type:text/html\n\n")
 import cgi, cgitb
 cgitb.enable()
 import sqlite3 as sql
+import datetime
+# All prices should be manipulated as Decimal values roudned to two places after
+# the decimal point. All fractions should also be Decimal values.
+# Use str(decimal_value) to get the representation to put in the database.
 import decimal
 from decimal import Decimal
 decimal.getcontext().prec = 6
-import datetime
 
 # There's a decent sqlite tutorial here:
 # http://zetcode.com/db/sqlitepythontutorial/
 sql_database = 'limbo4.db'
 
-def decimal_round(dec):
+def round_price(decimal_price):
     """Take a decimal value and round down to the nearest cent."""
-    dec.quantize(Decimal('.01'), rounding=decimal.ROUND_DOWN)
+    return decimal_price.quantize(Decimal('.01'), rounding=decimal.ROUND_DOWN)
+
+def price(string):
+    return round_price(Decimal(string))
+
+def first(iterable):
+    for item in iterable:
+        return item
 
 def initialize_test_database():
     """This function should only be called on an empty new database. This
@@ -118,7 +128,9 @@ def initialize_test_database():
 
         add_item("snapple", {"jrmole": '0.50', "srmole": '0.50'},
                  24, '1.23', '0.00', 52, 'A Juicy Beverage')
-        add_item("Lorem ipsum", {"mole": '0.90'}, 2, '1.55', '0.05', 24,
+        add_item("Lorem ipsum", {"mole": '0.95'}, 2, '1.55', '0.05', 24,
+                 """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
+        add_item("Test item", {"mole": '0.95'}, 123, '1.23', '0.05', 24,
                  """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
     return True
 
@@ -133,11 +145,11 @@ def checkout(itemname, buyer, count):
     date = datetime.datetime.now()
     profit_split_by_sellers = get_fraction_by_sellers(itemname)
     current_count, price_each, stockdate, expiry, _ = get_item_info(itemname)
-    total_price = float(price_each) * count
+    total_price = round_price(Decimal(price_each) * count)
 
     with sql.connect(sql_database) as connection:
-        tax = list(connection.execute("SELECT Tax FROM Items WHERE Name=?",
-                                      (itemname,)))[0]
+        tax = first(connection.execute("SELECT Tax FROM Items WHERE Name=?",
+                                      (itemname,)))
 
         # Subtract count from the item. If count is zero, then remove the item
         # record. If the count goes below zero, we have an error. Do not record
@@ -155,19 +167,21 @@ def checkout(itemname, buyer, count):
 
         # Subtract money from buyer
         connection.execute("UPDATE Users SET Balance=Balance-? WHERE Name=?",
-                           (total_price, buyer))
+                           (str(total_price), buyer))
 
         # Record the transaction
         for seller, profit_split in profit_split_by_sellers.items():
             connection.execute("INSERT INTO Purchases "
                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                (itemname, date, stockdate, expiry, buyer,
-                                seller, profit_split, price_each, count,
-                                str(tax)))
+                                seller, profit_split, price_each,
+                                count, tax))
             # Add money to seller
             connection.execute("UPDATE Users SET Balance=Balance+? "
                                "WHERE Name=?",
-                               (total_price * float(profit_split), seller))
+                               (str(round_price(total_price *
+                                                Decimal(profit_split))),
+                                seller))
     return True
 
 
@@ -175,13 +189,20 @@ def add_item(itemname, sellers, count, price_each, tax, expiry_time_in_weeks,
              description=''):
     """Adds an item as being in-stock and stocked by certain sellers.
        Returns True if successful."""
+    assert isinstance(count, int)
+    assert isinstance(expiry_time_in_weeks, int)
+    price_each = round_price(Decimal(price_each))
+    tax = Decimal(tax)
+    assert (sum(map(Decimal, sellers.values())) + tax == Decimal('1.00'))
+    
     duration = datetime.timedelta(weeks=expiry_time_in_weeks)
     stockdate = datetime.datetime.now()
     expirydate = stockdate + duration
+    
     with sql.connect(sql_database) as connection:
         connection.execute("INSERT INTO Items VALUES(?, ?, ?, ?, ?, ?, ?)",
-                           (itemname, count, price_each, tax, stockdate,
-                            expirydate, description))
+                           (itemname, count, str(price_each), str(tax),
+                            stockdate, expirydate, description))
         for seller, profit_split in sellers.items():
             connection.execute("INSERT INTO Sellers VALUES(?, ?, ?)",
                                (itemname, seller, profit_split))
@@ -189,24 +210,24 @@ def add_item(itemname, sellers, count, price_each, tax, expiry_time_in_weeks,
                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                (itemname, stockdate, stockdate, expirydate,
                                 seller, profit_split, str(price_each), 0,
-                                count, tax))
+                                count, str(tax)))
     return True
 
 def add_user(username, email, uid=0):
     """Creates a new user and inserts into the database.
        Returns True if successful"""
+    assert isinstance(uid, int)
     with sql.connect(sql_database) as connection:
         balance = Decimal('0.00')
         joindate = datetime.datetime.now()
         connection.execute("INSERT INTO Users VALUES(?, ?, ?, ?, ?)",
-                           (username, email, str(balance), int(uid), joindate))
+                           (username, email, str(balance), uid, joindate))
     return True
 
 def get_all_stock():
     """Returns all items stocked and all the associated data."""
     with sql.connect(sql_database) as connection:
-        rows = list(connection.execute("SELECT * FROM Items"))
-    return rows
+        return list(connection.execute("SELECT * FROM Items"))
 
 def get_fraction_by_sellers(itemname):
     """Returns a dictionary with sellers as keys, profit fractions as values."""
@@ -248,10 +269,10 @@ def get_usernames():
 def get_username(username):
     """Returns the information on a username if it exists, otherwise False."""
     with sql.connect(sql_database) as connection:
-        rows = list(connection.execute("SELECT * FROM Users WHERE Name=?",
-                                       (username,)))
+        rows = connection.execute("SELECT * FROM Users WHERE Name=?",
+                                  (username,))
     if rows:
-        return rows[0]
+        return first(rows)
     else:
         return False
 
@@ -273,20 +294,21 @@ def get_store_info(username):
 def get_item_info(itemname):
     """Returns count, price, stock date, expiry date, description of an item."""
     with sql.connect(sql_database) as connection:
-        rows = list(connection.execute("SELECT Count, Price, StockDate, "
+        row = first(connection.execute("SELECT Count, Price, StockDate, "
                                        "ExpiryDate, Description FROM Items "
                                        "WHERE Name=?", (itemname,)))
-    count, price_each, stockdate, expiry, desc = rows[0]
+    count, price_each, stockdate, expiry, desc = row
     return count, price_each, stockdate, expiry, desc
 
 def addremove_item(itemname, count_to_add):
     """Modifies stock by altering item count only. Returns True if
        successful."""
+    assert isinstance(count_to_add, int)
     date = datetime.datetime.now()
     with sql.connect(sql_database) as connection:
-        _, count, price, tax, stockdate, expirydate, _ = list(
+        _, count, price, tax, stockdate, expirydate, _ = first(
             connection.execute("SELECT * FROM Items WHERE Name=?",
-                               (itemname,)))[0]
+                               (itemname,)))
 
         if (-count_to_add) > count:
             return False
@@ -342,19 +364,28 @@ def get_user_transactions(username):
 def transfer_funds(sender, receiver, amount):
     """Transfers any nonzero amount of funds from one user to another.
        Returns True if successful."""
+    amount = price(amount)
     assert amount > 0
     date = datetime.datetime.now()
     with sql.connect(sql_database) as connection:
+        sender_balance = first(connection.execute("SELECT Balance FROM Users "
+                                                  "WHERE Name=?",
+                                                  (sender,)))
+        receiver_balance = first(connection.execute("SELECT Balance FROM Users "
+                                                    "WHERE Name=?",
+                                                    (receiver,)))
+        balance = Decimal(balance)
         connection.execute("UPDATE Users SET Balance=Balance-? WHERE Name=?",
-                           (amount, sender))
+                           (str(sender_balance - amount), sender))
         connection.execute("UPDATE Users SET Balance=Balance+? WHERE Name=?",
-                           (amount, receiver))
+                           (str(receiver_balance + amount), receiver))
         connection.execute("INSERT INTO Transfers VALUES(?, ?, ?, ?)",
-                           (date, sender, receiver, amount))
+                           (date, sender, receiver, str(amount)))
     return True
 
 def donate(amount):
     """Records an anonymous donation of cash. Returns True if successful."""
+    amount = price(amount)
     assert amount > 0
     date = datetime.datetime.now()
     with sql.connect(sql_database) as connection:
@@ -373,51 +404,51 @@ def get_total_cash():
 
 def change_balance(username, amount):
     """Deposit or withdraw some amount."""
+    amount = price(amount)
     date = datetime.datetime.now()
     with sql.connect(sql_database) as connection:
         if amount == 0:
             return True
         else:
             connection.execute("UPDATE Users SET Balance=Balance+? "
-                               "WHERE Name=?", (amount, username))
+                               "WHERE Name=?", (str(amount), username))
         connection.execute("INSERT INTO BalanceChanges VALUES(?, ?, ?)",
-                           (date, username, amount))
+                           (date, username, str(amount)))
     return True
 
 def main():
     # These are the allowed actions of cgi requests.
     actions = {
-        "add_user": add_user,
-        "usernames": get_usernames,
-        "username": get_username,
-        "store_info": get_store_info,
-        "add_item": add_item,
-        "addremove": addremove_item,
-        "get_all_sellers": get_all_sellers,
-        "item_info": get_item_info,
-        "checkout": checkout,
+        "add_user":     add_user,
+        "usernames":    get_usernames,
+        "username":     get_username,
+        "store_info":   get_store_info,
+        "add_item":     add_item,
+        "addremove":    addremove_item,
+        "item_info":    get_item_info,
+        "checkout":     checkout,
         "transactions": get_user_transactions,
-        "transfer": transfer_funds,
-        "donate": donate,
-        "cash": get_total_cash,
-        "balance": change_balance,
-        # remove the following lines in production
+        "transfer":     transfer_funds,
+        "donate":       donate,
+        "cash":         get_total_cash,
+        "balance":      change_balance,
+        # remove the following line in production
         "delete_test_database": delete_test_database,
     }
-
+    # Get cgi arguments
     form = cgi.FieldStorage()
     action = form.getfirst("action", "")
     # If no valid action is provided, don't do anything.
     if action not in actions:
         return
     function = actions[action]
-    arguments_to_apply = {}
     # What is about to happen uses CPython-specific code to find the arguments
-    # in the function.
+    # in the function and assign them based on name.
     argnames = function.__code__.co_varnames[:function.__code__.co_argcount]
+    arguments_to_apply = {}
     for argname in argnames:
         arguments_to_apply[argname] = eval(form.getfirst(argname, None))
-    # Print the return value
+    # Print the return value to send to the client.
     print(function(**arguments_to_apply))
 
 main()
