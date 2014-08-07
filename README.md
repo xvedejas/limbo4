@@ -32,3 +32,18 @@ Planned Features:
   * Email notifications / reminders
   * Debt list ("wall of shame")
   * Automatic removal or labelling of expired items
+
+Installation
+------------
+
+Modify `path_to_limbo` in `server.py` with the absolute path to the limbo4
+directory. For example, this might be `/var/www/limbo4/`.
+
+Add the following line to httpd.conf:
+
+```
+ScriptAlias /cgi-bin/ "/path/to/limbo4/cgi-bin/"
+```
+
+It is also recommended to setup cron jobs to run the scripts `backupdb.sh`,
+`statistics.py`, and `expiration.py`.
