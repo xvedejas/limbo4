@@ -152,7 +152,7 @@ class StoreSession():
                       receiver=repr(target),
                       amount=amount)
     
-    def export_transactions(self):
+    def export_transactions(self, ev):
         redirect("cgi-bin/limbo-cgi.py",
                  action="transactions.csv",
                  username=repr(self.username))

@@ -1,17 +1,17 @@
 #!/usr/bin/bash
 # Get today's date
-DATE=${date -I}
+DATE=`date -I`
 
 # Set a timeout (in ms) for sql operations to finish, then safely backup the
 # database to a new file.
-sqlite3 limbo4.db <<EOF
+sqlite3 data/limbo4.db <<EOF
 .timeout 20000
-.backup limbo4-${DATE}.db
+.backup data/limbo4-${DATE}.db
 EOF
 
 # Routines to copy limbo4-backup.db to other machines.
-USER=undef
-HOST=undef
-DIR=under
+#USER=undef
+#HOST=undef
+#DIR=under
 
-scp limbo4-backup.db ${USER}@${HOST}:${DIR}
+#scp limbo4-backup.db ${USER}@${HOST}:${DIR}

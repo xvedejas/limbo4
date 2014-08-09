@@ -216,10 +216,6 @@ def addremove_item(itemname, count_to_add):
                                 new_count, tax)
     return True
 
-def check_expired_stock():
-    """Removes all stock which has expired and records this."""
-    pass # todo
-
 def get_user_transactions(username):
     """Returns all transactions associated with a username."""
     with sql.connect(sql_database) as conn:

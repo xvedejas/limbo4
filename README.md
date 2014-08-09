@@ -23,15 +23,16 @@ Current Features:
   * Optional limbo sales tax
   * Money Transfers
   * Anonymous donations
+  * Automated database backup
+  * Automatic removal or labelling of expired items
+  * Export a user's transactions as csv
 
 Planned Features:
 
   * Auto-generated statistics
-  * Automated database backup
   * Tools to help find discrepancies in bookkeeping / verify integrity of data
   * Email notifications / reminders
   * Debt list ("wall of shame")
-  * Automatic removal or labelling of expired items
 
 Installation
 ------------
@@ -45,5 +46,7 @@ Add the following line to httpd.conf:
 ScriptAlias /cgi-bin/ "/path/to/limbo4/cgi-bin/"
 ```
 
-It is also recommended to setup cron jobs to run the scripts `backupdb.sh`,
+For remote backups, edit `backupdb.sh` with host info.
+
+It is strongly recommended to setup cron jobs to run the scripts `backupdb.sh`,
 `statistics.py`, and `expiration.py`.
