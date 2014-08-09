@@ -85,14 +85,16 @@ class StoreSession():
                                            self.clear_to_addremove_event)
 
         doc['transfer_button'].bind('click', self.transfer_event)
-
+        
+        doc['export_transactions'].bind('click', self.export_transactions)
+        
         self.sellers_by_item = sellers_by_item
 
         # Populate the list of transactions.
         ## TODO: when a transaction is clicked on, shows more info
         purchases, transfers, balances, stocks, expiries = transactions
 
-        entries = []
+        entries = [] # Transaction entries to show
         for purchase in purchases:
             item, date, stockdate, expirydate, buyer, seller, profit_split, \
                 price_each, count, tax = purchase
@@ -122,8 +124,8 @@ class StoreSession():
                      "{2}x {3} (${4} each)</option>")
             entries.append(entry.format(date[:19], oldcount, newcount,
                                         item, price_each))
-
-        doc["transactions"].html = ''.join(entries)
+        
+        doc["transactions"].html = ''.join(reversed(sorted(entries)))
 
     def transfer_event(self, ev):
         """The user has clicked the 'transfer' button to transfer some of their
@@ -149,7 +151,12 @@ class StoreSession():
                       sender=repr(self.username),
                       receiver=repr(target),
                       amount=amount)
-
+    
+    def export_transactions(self):
+        redirect("cgi-bin/limbo-cgi.py",
+                 action="transactions.csv",
+                 username=repr(self.username))
+    
     def checkout_submit_event(self, ev):
         """The user has clicked the checkout submit button. Send an async
            request for each item."""

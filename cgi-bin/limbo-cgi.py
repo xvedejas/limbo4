@@ -223,13 +223,13 @@ def check_expired_stock():
 def get_user_transactions(username):
     """Returns all transactions associated with a username."""
     with sql.connect(sql_database) as conn:
-        purchases = Purchases.select(conn, "Buyer=? OR Seller=? ORDER BY Date",
+        purchases = Purchases.select(conn, "Buyer=? OR Seller=?",
                                      username, username)
-        transfers = Transfers.select(conn, "Sender=? OR Receiver=? "
-                                     "ORDER BY Date", username, username)
-        balances = BalanceChanges.select(conn, "User=? ORDER BY Date", username)
-        stocks = Stocking.select(conn, "Seller=? ORDER BY Date", username)
-        expiries = ExpiryEvents.select(conn, "Seller=? ORDER BY Date", username)
+        transfers = Transfers.select(conn, "Sender=? OR Receiver=?",
+                                     username, username)
+        balances = BalanceChanges.select(conn, "User=?", username)
+        stocks = Stocking.select(conn, "Seller=?", username)
+        expiries = ExpiryEvents.select(conn, "Seller=?", username)
     return purchases, transfers, balances, stocks, expiries
 
 def transfer_funds(sender, receiver, amount):
@@ -281,6 +281,21 @@ def change_balance(username, amount):
         BalanceChanges.insert(conn, date, username, str(amount))
     return True
 
+def generate_transactions_csv(username):
+    purchases, transfers, balances, stocks, expiries = \
+        get_user_transactions(username)
+    for purchase in purchases:
+        print("Purchase, %s<br />" % str(purchase)[1:-1])
+    for transfer in transfers:
+        print("Transfer, %s<br />" % str(transfer)[1:-1])
+    for balance in balances:
+        print("Balance, %s<br />" % str(balance)[1:-1])
+    for stock in stocks:
+        print("Stock, %s<br />" % str(stock)[1:-1])
+    for expiry in expiries:
+        print("Expiry, %s<br />" % str(expiry)[1:-1])
+    return ''
+
 def main():
     # These are the allowed actions of cgi requests.
     actions = {
@@ -297,6 +312,7 @@ def main():
         "donate":       donate,
         "cash":         get_total_cash,
         "balance":      change_balance,
+        "transactions.csv": generate_transactions_csv,
         # remove the following line in production
         "delete_test_database": delete_test_database,
     }
