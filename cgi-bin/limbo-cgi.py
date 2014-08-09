@@ -47,12 +47,12 @@ def delete_test_database():
     os.remove(sql_database)
     return initialize_test_database()
 
-def checkout(itemname, buyer, count):
+def checkout(itemname, buyername, count):
     """Buyer checkouts any amount of a single item."""
     date = datetime.datetime.now()
     profit_split_by_sellers = get_fraction_by_sellers(itemname)
     current_count, price_each, stockdate, expiry, _ = get_item_info(itemname)
-    total_price = round_price(Decimal(price_each) * count)
+    total_price = round_dollar_amount(dollar_amount(price_each) * count)
 
     with sql.connect(sql_database) as conn:
         tax = Items.select_one(conn, "Name=?", itemname).Tax
@@ -68,20 +68,26 @@ def checkout(itemname, buyer, count):
             Sellers.delete(conn, "ItemName=?", itemname)
         else:
             Items.update(conn, "Count=?", "Name=?", new_count, itemname)
-
+        
+        buyer = Users.select(conn, "Name=?", buyername)
+        
         # Subtract money from buyer
         ## Todo: use demical
-        Users.update(conn, "Balance=Balance-?", "Name=?",
-                     str(total_price), buyer)
+        Users.update(conn, "Balance=?", "Name=?",
+                     str(round_dollar_amount(dollar_amount(buyer.Balance) -
+                                             total_price)),
+                     buyer)
 
-        for seller, profit_split in profit_split_by_sellers.items():
+        for sellername, profit_split in profit_split_by_sellers.items():
+            seller = Users.select(conn, "Name=?", sellername)
             # Record the transaction
             Purchases.insert(conn, itemname, date, stockdate, expiry,
                                           buyer, seller, profit_split,
                                           price_each, count, tax)
             # Add money to seller
-            Users.update(conn, "Balance=Balance+?", "Name=?",
-                         str(round_price(total_price * Decimal(profit_split))),
+            Users.update(conn, "Balance=?", "Name=?",
+                         str(round_dollar_amount(dollar_amount(seller.Balance) +
+                                         total_price * Decimal(profit_split))),
                          seller)
     return True
 
@@ -92,7 +98,7 @@ def add_item(itemname, sellers, count, price_each, tax, expiry_time_in_weeks,
        Returns True if successful."""
     assert isinstance(count, int)
     assert isinstance(expiry_time_in_weeks, int)
-    price_each = round_price(Decimal(price_each))
+    price_each = round_dollar_amount(Decimal(price_each))
     tax = Decimal(tax)
     assert (sum(map(Decimal, sellers.values())) + tax == Decimal('1.00'))
 
@@ -231,7 +237,7 @@ def get_user_transactions(username):
 def transfer_funds(sender, receiver, amount):
     """Transfers any nonzero amount of funds from one user to another.
        Returns True if successful."""
-    amount = price(amount)
+    amount = dollar_amount(amount)
     assert amount > 0
     date = datetime.datetime.now()
     with sql.connect(sql_database) as conn:
@@ -247,7 +253,7 @@ def transfer_funds(sender, receiver, amount):
 
 def donate(amount):
     """Records an anonymous donation of cash. Returns True if successful."""
-    amount = price(amount)
+    amount = dollar_amount(amount)
     assert amount > 0
     date = datetime.datetime.now()
     with sql.connect(sql_database) as conn:
@@ -266,14 +272,15 @@ def get_total_cash():
 
 def change_balance(username, amount):
     """Deposit or withdraw some amount."""
-    amount = price(amount)
+    amount = dollar_amount(amount)
     date = datetime.datetime.now()
     with sql.connect(sql_database) as conn:
         if amount == 0:
             return True
         else:
-            Users.update(conn, "Balance=Balance+?", "Name=?",
-                         str(amount), username)
+            user = Users.select(conn, "Name=?")
+            Users.update(conn, "Balance=?", "Name=?",
+                         str(dollar_amount(user.Balance) + amount), username)
         BalanceChanges.insert(conn, date, username, str(amount))
     return True
 

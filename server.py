@@ -13,12 +13,12 @@ path_to_limbo = '/srv/http/limbo4/'
 # http://zetcode.com/db/sqlitepythontutorial/
 sql_database = path_to_limbo + 'data/limbo4.db'
 
-def round_price(decimal_price):
+def round_dollar_amount(decimal_price):
     """Take a decimal value and round down to the nearest cent."""
     return decimal_price.quantize(Decimal('.01'), rounding=decimal.ROUND_DOWN)
 
-def price(string):
-    return round_price(Decimal(string))
+def dollar_amount(string):
+    return round_dollar_amount(Decimal(string))
 
 class Table():
     def __init__(self, name, *fields):
