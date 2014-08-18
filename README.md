@@ -29,6 +29,8 @@ Current Features:
 
 Planned Features:
 
+  * Showing possibly similar items already stocked when adding an item to avoid
+    indistinct items.
   * Auto-generated statistics
   * Tools to help find discrepancies in bookkeeping / verify integrity of data
   * Email notifications / reminders

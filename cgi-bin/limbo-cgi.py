@@ -25,20 +25,6 @@ def initialize_test_database():
         Donations.create(conn)
         ExpiryEvents.create(conn)
         Statistics.create(conn)
-
-        # Now we will populate the Users and Items tables with some fake users
-        # and items.
-        add_user("jrmole", "jrmole@blacker.caltech.edu")
-        add_user("socialmole", "socialmole@blacker.caltech.edu")
-        add_user("mole", "mole@blacker.caltech.edu")
-        add_user("srmole", "srmole@blacker.caltech.edu")
-
-        add_item("snapple", {"jrmole": '0.50', "srmole": '0.50'},
-                 24, '1.23', '0.00', 52, 'A Juicy Beverage')
-        add_item("Lorem ipsum", {"mole": '0.95'}, 2, '1.55', '0.05', 24,
-                 """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
-        add_item("Test item", {"mole": '0.95'}, 123, '1.23', '0.05', 24,
-                 """Lorem ipsum dolor sit amet, consectetur adipisicing elit""")
     return True
 
 def delete_test_database():
