@@ -134,13 +134,13 @@ class StoreSession():
         target = doc['transfer_target'].value
         try:
             if not amount:
-                notify("Amount must be an integer")
+                notify("Amount must be a number")
                 return
-            amount = int(amount)
+            amount_float = float(amount)
         except ValueError:
-            notify("Amount must be an integer")
+            notify("Amount must be a number")
             return
-        if amount < 0:
+        if amount_float < 0:
             notify("Amount must be non-zero")
             return
         if target not in self.usernames:
@@ -168,7 +168,7 @@ class StoreSession():
             count = child.count
             async_request(action="checkout",
                           itemname=repr(item),
-                          buyer=repr(self.username),
+                          buyername=repr(self.username),
                           count=count)
         async_request(self.done_checkout,
                       action="balance",
@@ -352,7 +352,7 @@ class StoreSession():
                                            placeholder="seller"),
                                 align="right") +
                         html.TD(html.INPUT(type="text",
-                                           placeholder="percent of profits",
+                                           placeholder="fraction of profits (0.0 1.0]",
                                            id=profit_id)))
         doc["stocking_table"] <= entry
         doc[profit_id].bind("keyup", self.change_profits_event)
@@ -367,10 +367,10 @@ class StoreSession():
             if value:
                 total += float(value)
         total += float(doc["tax"].value)
-        percent = 100.0 - total
+        percent = 1.0 - total
         listed_price_each = float(doc["price"].value)
-        doc["your_percentage"].html = str(percent) + '%'
-        doc["your_income"].html = '$%.2f' % (percent * 0.01 * listed_price_each)
+        doc["your_percentage"].html = str(percent)
+        doc["your_income"].html = '$%.2f' % (percent * listed_price_each)
 
     def stock_item_done(self, res):
         """Refresh when an item is stocked."""
@@ -398,7 +398,8 @@ class StoreSession():
             notify("Invalid price")
             return
         try:
-            price = "%.2f" % float(doc["price"].value)
+            price = doc["price"].value
+            price_float = float(price)
         except ValueError:
             notify("Invalid price")
             return
@@ -406,11 +407,12 @@ class StoreSession():
             notify("Invalid tax")
             return
         try:
-            tax = float(doc["tax"].value) * 0.01
+            tax_float = float(doc["tax"].value)
+            tax = doc["tax"].value
         except ValueError:
             notify("Invalid tax percentage")
             return
-        if tax > 100.0:
+        if tax_float > 1.0:
             notify("Invalid tax percentage. Must be less than 100%.")
             return
         name = doc["itemname"].value
@@ -426,8 +428,9 @@ class StoreSession():
             notify("Please add a useful description! "
                    "It will help people buy your stuff.")
             return
-        total_profit = 0.00
+        total_profit = tax_float
         sellers = {}
+        
         for seller_number in range(2, self.seller_count + 1):
             seller = doc["additional_seller%i" % seller_number].value
             if seller == self.username or seller not in self.usernames:
@@ -435,19 +438,26 @@ class StoreSession():
                 return
             profit_string = doc["additional_seller_profit%i" %
                                 seller_number].value
-            profit = float(profit_string) * 0.01
+            profit = float(profit_string)
             total_profit += profit
-            if total_profit >= 1.00:
-                notify("Invalid profits chosen: "
-                       "profits and tax cannot total over 100%.")
-                return
-            sellers[seller] = profit
+            sellers[seller] = profit_string
 
-        sellers[self.username] = 1.00 - total_profit
-
-        async_request(self.stock_item_done, action="add_item",
+        if total_profit >= 1.00:
+            notify("Invalid profits chosen: "
+                   "profits and tax cannot total over 100%.")
+            return
+        
+        # The seller with profit listed as "None" will get the remaining amount
+        sellers[self.username] = None
+        
+        print(dict(itemname=repr(name), sellers=sellers, count=count,
+                              price_each=repr(price), tax=repr(tax), expiry_time_in_weeks=expiry,
+                                                    description=repr(description)))
+        
+        async_request(on_complete=self.done_checkout,
+                      action="add_item",
                       itemname=repr(name), sellers=sellers, count=count,
-                      price_each=price, tax=tax, expiry_time_in_weeks=expiry,
+                      price_each=repr(price), tax=repr(tax), expiry_time_in_weeks=expiry,
                       description=repr(description))
 
 StoreSession()

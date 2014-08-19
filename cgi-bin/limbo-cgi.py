@@ -55,26 +55,26 @@ def checkout(itemname, buyername, count):
         else:
             Items.update(conn, "Count=?", "Name=?", new_count, itemname)
         
-        buyer = Users.select(conn, "Name=?", buyername)
+        buyer = Users.select_one(conn, "Name=?", buyername)
         
         # Subtract money from buyer
         ## Todo: use demical
         Users.update(conn, "Balance=?", "Name=?",
                      str(round_dollar_amount(dollar_amount(buyer.Balance) -
                                              total_price)),
-                     buyer)
+                     buyername)
 
         for sellername, profit_split in profit_split_by_sellers.items():
-            seller = Users.select(conn, "Name=?", sellername)
+            seller = Users.select_one(conn, "Name=?", sellername)
             # Record the transaction
             Purchases.insert(conn, itemname, date, stockdate, expiry,
-                                          buyer, seller, profit_split,
+                                          buyername, sellername, profit_split,
                                           price_each, count, tax)
             # Add money to seller
             Users.update(conn, "Balance=?", "Name=?",
                          str(round_dollar_amount(dollar_amount(seller.Balance) +
                                          total_price * Decimal(profit_split))),
-                         seller)
+                         sellername)
     return True
 
 
@@ -86,20 +86,28 @@ def add_item(itemname, sellers, count, price_each, tax, expiry_time_in_weeks,
     assert isinstance(expiry_time_in_weeks, int)
     price_each = round_dollar_amount(Decimal(price_each))
     tax = Decimal(tax)
-    assert (sum(map(Decimal, sellers.values())) + tax == Decimal('1.00'))
 
     duration = datetime.timedelta(weeks=expiry_time_in_weeks)
     stockdate = datetime.datetime.now()
     expirydate = stockdate + duration
-
+    
+    # If a seller's profit_split is marked as None, then they will
+    # receive the remainder of profits.
+    profits_remainder = Decimal(1.0) - tax
+    for profit_split in sellers.values():
+        if profit_split is not None:
+            profits_remainder -= Decimal(profit_split)
+    
     with sql.connect(sql_database) as conn:
         Items.insert(conn, itemname, count, str(price_each), str(tax),
                                  stockdate, expirydate, description)
         for seller, profit_split in sellers.items():
-            Sellers.insert(conn, itemname, seller, profit_split)
+            if profit_split is None:
+                profit_split = profits_remainder
+            Sellers.insert(conn, itemname, seller, str(profit_split))
             Stocking.insert(conn,
                             itemname, stockdate, stockdate, expirydate,
-                            seller, profit_split, str(price_each), 0,
+                            seller, str(profit_split), str(price_each), 0,
                             count, str(tax))
     return True
 
@@ -197,7 +205,7 @@ def addremove_item(itemname, count_to_add):
         
         if new_count == 0:
             Sellers.delete(conn, "ItemName=?", itemname)
-            Items.delete(conn, "ItemName=?", itemname)
+            Items.delete(conn, "Name=?", itemname)
         else:
             Items.update(conn, "Count=?", "Name=?", new_count, itemname)
 
@@ -227,8 +235,8 @@ def transfer_funds(sender, receiver, amount):
     assert amount > 0
     date = datetime.datetime.now()
     with sql.connect(sql_database) as conn:
-        sender_balance = Users.select_one(conn, "Name=?", (sender,)).Balance
-        receiver_balance = Users.select_one(conn, "Name=?", (receiver,)).Balance
+        sender_balance = dollar_amount(Users.select_one(conn, "Name=?", sender).Balance)
+        receiver_balance = dollar_amount(Users.select_one(conn, "Name=?", receiver).Balance)
         
         Users.update(conn, "Balance=?", "Name=?",
                      str(sender_balance - amount), sender)
@@ -264,7 +272,7 @@ def change_balance(username, amount):
         if amount == 0:
             return True
         else:
-            user = Users.select(conn, "Name=?")
+            user = Users.select_one(conn, "Name=?", username)
             Users.update(conn, "Balance=?", "Name=?",
                          str(dollar_amount(user.Balance) + amount), username)
         BalanceChanges.insert(conn, date, username, str(amount))
@@ -303,7 +311,7 @@ def main():
         "balance":      change_balance,
         "transactions.csv": generate_transactions_csv,
         # remove the following line in production
-        "delete_test_database": delete_test_database,
+        #"delete_test_database": delete_test_database,
     }
     # Get cgi arguments
     form = cgi.FieldStorage()
@@ -322,3 +330,4 @@ def main():
     print(function(**arguments_to_apply))
 
 main()
+
