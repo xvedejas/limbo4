@@ -14,7 +14,7 @@ from server import *
 def initialize_test_database():
     """This function should only be called on an empty new database. This
        function should also be where you create fake users/items for testing."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         Users.create(conn)
         Items.create(conn)
         Sellers.create(conn)
@@ -40,7 +40,7 @@ def checkout(itemname, buyername, count):
     current_count, price_each, stockdate, expiry, _ = get_item_info(itemname)
     total_price = round_dollar_amount(dollar_amount(price_each) * count)
 
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         tax = Items.select_one(conn, "Name=?", itemname).Tax
 
         # Subtract count from the item. If count is zero, then remove the item
@@ -98,7 +98,7 @@ def add_item(itemname, sellers, count, price_each, tax, expiry_time_in_weeks,
         if profit_split is not None:
             profits_remainder -= Decimal(profit_split)
     
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         Items.insert(conn, itemname, count, str(price_each), str(tax),
                                  stockdate, expirydate, description)
         for seller, profit_split in sellers.items():
@@ -115,7 +115,7 @@ def add_user(username, email, uid=0):
     """Creates a new user and inserts into the database.
        Returns True if successful"""
     assert isinstance(uid, int)
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         balance = Decimal('0.00')
         joindate = datetime.datetime.now()
         Users.insert(conn, username, email, str(balance), uid, joindate)
@@ -123,18 +123,18 @@ def add_user(username, email, uid=0):
 
 def get_all_stock():
     """Returns all items stocked and all the associated data."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         return list(Items.select(conn, None))
 
 def get_fraction_by_sellers(itemname):
     """Returns a dictionary with sellers as keys, profit fractions as values."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         rows = Sellers.select(conn, "ItemName=?", itemname)
     return dict((row.Seller, row.ProfitSplit) for row in rows)
 
 def get_all_sellers():
     """Returns a dictionary with item names as keys, seller lists as values."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         rows = Sellers.select(conn, None)
     sellers_by_item = {}
     for row in rows:
@@ -147,7 +147,7 @@ def get_all_sellers():
 def get_user_stock(username):
     """Returns all item names which list the given username as a seller."""
     rows = []
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         for row in Sellers.select(conn, "Seller=?", username):
             rows.append(row.ItemName)
     return rows
@@ -155,14 +155,14 @@ def get_user_stock(username):
 def get_usernames():
     """Returns a list of all usernames."""
     names = []
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         for row in Users.select(conn, None):
             names.append(row.Name)
     return names
 
 def get_username(username):
     """Returns the information on a username if it exists, otherwise False."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         t = Users.select_one(conn, "Name=?", username)
     return t
 
@@ -183,7 +183,7 @@ def get_store_info(username):
 
 def get_item_info(itemname):
     """Returns count, price, stock date, expiry date, description of an item."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         row = Items.select_one(conn, "Name=?", itemname)
     return row.Count, row.Price, row.StockDate, row.ExpiryDate, row.Description
 
@@ -192,7 +192,7 @@ def addremove_item(itemname, count_to_add):
        successful."""
     assert isinstance(count_to_add, int)
     date = datetime.datetime.now()
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         row = Items.select_one(conn, "Name=?", itemname)
         _, count, price, tax, stockdate, expirydate, _ = row
         new_count = count + count_to_add
@@ -218,7 +218,7 @@ def addremove_item(itemname, count_to_add):
 
 def get_user_transactions(username):
     """Returns all transactions associated with a username."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         purchases = Purchases.select(conn, "Buyer=? OR Seller=?",
                                      username, username)
         transfers = Transfers.select(conn, "Sender=? OR Receiver=?",
@@ -234,7 +234,7 @@ def transfer_funds(sender, receiver, amount):
     amount = dollar_amount(amount)
     assert amount > 0
     date = datetime.datetime.now()
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         sender_balance = dollar_amount(Users.select_one(conn, "Name=?", sender).Balance)
         receiver_balance = dollar_amount(Users.select_one(conn, "Name=?", receiver).Balance)
         
@@ -250,14 +250,14 @@ def donate(amount):
     amount = dollar_amount(amount)
     assert amount > 0
     date = datetime.datetime.now()
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         Donations.insert(conn, date, amount)
     return True
 
 def get_total_cash():
     """The expected amount of cash in Limbo is the sum of all user balances
        and all donations."""
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         total_balances = sum(Decimal(user.Balance)
                              for user in Users.select(conn, None))
         total_donations = sum(Decimal(donation.Amount)
@@ -268,7 +268,7 @@ def change_balance(username, amount):
     """Deposit or withdraw some amount."""
     amount = dollar_amount(amount)
     date = datetime.datetime.now()
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         if amount == 0:
             return True
         else:

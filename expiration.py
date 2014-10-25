@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # Checks limbo stock for expired goods.
-from server import sql_database, Items, ExpiryEvents, Sellers
+from server import sql_database, connect, Items, ExpiryEvents, Sellers
 import sqlite3 as sql
 import datetime
 
 if __name__ == '__main__':
-    with sql.connect(sql_database) as conn:
+    with DBConnection() as conn:
         now = datetime.datetime.now()
         items = Items.select(conn, "ExpiryDate < ?", now)
         for item in items:

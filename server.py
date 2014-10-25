@@ -20,6 +20,35 @@ def round_dollar_amount(decimal_price):
 def dollar_amount(string):
     return round_dollar_amount(Decimal(string))
 
+class DBConnection():
+    def __enter__ (self):
+        # Code to start a new transaction
+        return self.cursor()
+        
+    def __exit__ (self, type, value, tb):
+        if tb is None:
+            self.commit()
+        else:
+            self.rollback()
+    
+    def commit(self):
+        "Commits current transaction"
+        self.conn.commit()
+        self.conn.close()
+    
+    def cursor(self):
+        "Returns a cursor object and starts a new transaction"
+        self.conn = sql.connect(sql_database)
+        self.conn.isolation_level = 'EXCLUSIVE'
+        self.conn.execute('BEGIN EXCLUSIVE')
+        return self.conn
+    
+    def rollback(self):
+        self.conn.execute('ROLLBACK')
+        self.conn.close()
+
+#### DB Table Interactions #####################################################
+
 class Table():
     def __init__(self, name, *fields):
         self.name = name
@@ -28,6 +57,7 @@ class Table():
         self.Tuple = namedtuple(self.name, self.fieldnames)
         self.Tuple.__str__ = lambda T: str(tuple(T))
         self.Tuple.__repr__ = lambda T: str(tuple(T))
+        
     def create(self, db_conn):
         db_conn.execute("CREATE TABLE %s(%s)" %
                               (self.name, ', '.join(self.fields)))
@@ -57,6 +87,8 @@ class Table():
     def update(self, conn, field, where, *args):
         query = "UPDATE %s SET %s WHERE %s" % (self.name, field, where)
         conn.execute(query, args)
+
+#### DB Table Definitions ######################################################
 
 # Some notes on data storage:
 # Balance/Price are python decimal amounts, so they are stored as their
