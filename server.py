@@ -7,7 +7,7 @@ import decimal
 from decimal import Decimal
 decimal.getcontext().prec = 6
 from collections import namedtuple
-path_to_limbo = '/var/local/blacker/web/limbo4/'
+path_to_limbo = '/srv/http/limbo4/'
 
 # There's a decent sqlite tutorial here:
 # http://zetcode.com/db/sqlitepythontutorial/
@@ -44,7 +44,7 @@ class DBConnection():
         return self.conn
     
     def rollback(self):
-        self.conn.execute('ROLLBACK')
+        #self.conn.execute('ROLLBACK')
         self.conn.close()
 
 #### DB Table Interactions #####################################################
